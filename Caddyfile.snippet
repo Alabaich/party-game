@@ -1,0 +1,31 @@
+# ============================================================
+#  Додай цей блок у /etc/caddy/Caddyfile (на хості).
+#  Заміни party.enjob.ca на свій GAME_DOMAIN з .env.
+#  Caddy сам випустить і оновлюватиме SSL-сертифікат.
+# ============================================================
+#
+#  ВАЖЛИВО: Caddy на хості НЕ читає .env проєкту автоматично.
+#  Тому домен і порти тут прописуються явно. Якщо хочеш керувати
+#  через змінні — див. README, розділ "Caddy через env".
+#
+#  Порти мають збігатися з BACKEND_PORT / FRONTEND_PORT з .env.
+
+party.enjob.ca {
+    encode gzip
+
+    # API → backend контейнер. handle_path зрізає /api,
+    # тож FastAPI бачить чисті шляхи (/register, /leaderboard, ...).
+    handle_path /api/* {
+        reverse_proxy 127.0.0.1:8090
+    }
+
+    # Усе інше → frontend (SPA на nginx у контейнері).
+    handle {
+        reverse_proxy 127.0.0.1:8091
+    }
+
+    header {
+        -Server
+        X-Content-Type-Options nosniff
+    }
+}

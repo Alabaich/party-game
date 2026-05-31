@@ -19,6 +19,7 @@ export const api = {
   dashboard: (uuid) => jfetch(`/u/${uuid}`),
   gameStatus: () => jfetch('/game'),
   startGame: () => jfetch('/game/start', { method: 'POST' }),
+  revealPlaces: () => jfetch('/game/reveal', { method: 'POST' }),
   leaderboard: () => jfetch('/leaderboard'),
   slideshow: () => jfetch('/slideshow'),
   complete: (uuid, aid, files) =>
@@ -27,7 +28,6 @@ export const api = {
     }),
 }
 
-// Upload a single file via backend proxy (avoids R2 CORS issues).
 export async function uploadFile(uuid, assignmentId, file) {
   const form = new FormData()
   form.append('file', file)
@@ -44,7 +44,6 @@ export async function uploadFile(uuid, assignmentId, file) {
   return { public_url, media_type }
 }
 
-// Upload multiple files and finalize the assignment.
 export async function uploadAndComplete(uuid, assignmentId, fileList) {
   const files = []
   for (const f of Array.from(fileList)) {
@@ -53,7 +52,20 @@ export async function uploadAndComplete(uuid, assignmentId, fileList) {
   return api.complete(uuid, assignmentId, files)
 }
 
-// localStorage helpers for re-entry.
+export async function freeUpload(uuid, file) {
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${API}/u/${uuid}/free-upload`, {
+    method: 'POST',
+    body: form,
+  })
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(t || `Upload failed: HTTP ${res.status}`)
+  }
+  return res.json()
+}
+
 export const store = {
   getUuid: () => localStorage.getItem('player_uuid'),
   setUuid: (u) => localStorage.setItem('player_uuid', u),

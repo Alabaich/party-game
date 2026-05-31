@@ -56,8 +56,9 @@ class DashboardOut(BaseModel):
     game_started: bool
     started_at: datetime | None
     server_time: datetime
-    players: list[PlayerListItem]      # для екрану очікування
-    assignments: list[AssignmentOut]   # порожній поки гра не почалась
+    players: list[PlayerListItem]
+    assignments: list[AssignmentOut]
+    places_revealed: bool
 
 
 # ---- Presigned upload ----
@@ -72,7 +73,6 @@ class PresignOut(BaseModel):
 
 
 class CompleteTaskIn(BaseModel):
-    # фронт надсилає сюди публічні URL після успішної заливки в R2
     files: list["UploadedFile"]
 
 
@@ -88,26 +88,29 @@ class LeaderboardItem(BaseModel):
     completed_count: int
     finished: bool
     completed_at: datetime | None
-    duration_seconds: int | None   # completed_at - started_at, лише для finished
-    is_winner: bool                # топ-3 серед finished
+    duration_seconds: int | None
+    is_winner: bool
 
 
-# ---- Game status (для кнопки СТАРТ) ----
+# ---- Game status ----
 class GameStatusOut(BaseModel):
-    exists: bool          # чи зареєстрований хоч хтось
+    exists: bool
     started: bool
     started_at: datetime | None
     player_count: int
     server_time: datetime
+    places_revealed: bool
 
 
 # ---- Slideshow ----
 class SlideItem(BaseModel):
-    assignment_id: int
+    id: str                  # unique key: "assignment-{id}-{media_id}" or "free-{id}"
     user_name: str
-    task_description: str
-    media: list[MediaOut]
+    task_description: str | None   # None for free uploads
+    file_url: str
+    media_type: MediaType
     completed_at: datetime
+    is_free: bool            # True = free upload, no task
 
 
 CompleteTaskIn.model_rebuild()

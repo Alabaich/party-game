@@ -2,11 +2,10 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from .database import get_db
-from .config import settings
 from . import models, schemas
 from .models import (
-    User, GameState, Task, Assignment, Media,
-    AssignmentStatus, TaskType,
+    User, GameState, Task, Assignment, Media, FreeMedia,
+    AssignmentStatus, TaskType, MediaType,
 )
 from .r2 import make_presigned_put, upload_file_to_r2
 from .scheduler import start_game
@@ -20,17 +19,19 @@ router = APIRouter()
 @router.post("/register", response_model=schemas.UserOut)
 def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
     now = datetime.utcnow()
-    gs = db.get(GameState, 1)
 
+    existing = db.query(User).filter(User.name == payload.name.strip()).first()
+    if existing:
+        raise HTTPException(400, "This name is already taken")
+
+    gs = db.get(GameState, 1)
     is_latecomer = False
     if gs is None:
-        # найперший юзер — створюємо GameState (гра ще НЕ стартувала)
         gs = GameState(id=1, first_user_joined_at=now,
-                       started_at=None, tasks_assigned=False)
+                       started_at=None, tasks_assigned=False, places_revealed=False)
         db.add(gs)
         db.flush()
     else:
-        # якщо гра вже стартувала — цей юзер латекомер
         if gs.tasks_assigned:
             is_latecomer = True
 
@@ -52,7 +53,6 @@ def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
 
 @router.get("/players", response_model=list[schemas.PlayerListItem])
 def list_players(db: Session = Depends(get_db)):
-    """Для кнопки 'увійти як наявний гравець'."""
     return db.query(User).order_by(User.name).all()
 
 
@@ -68,6 +68,7 @@ def game_status(db: Session = Depends(get_db)):
         started_at=gs.started_at if gs else None,
         player_count=count,
         server_time=datetime.utcnow(),
+        places_revealed=bool(gs and gs.places_revealed),
     )
 
 
@@ -80,6 +81,22 @@ def game_start(db: Session = Depends(get_db)):
     return schemas.GameStatusOut(
         exists=True, started=gs.tasks_assigned, started_at=gs.started_at,
         player_count=count, server_time=datetime.utcnow(),
+        places_revealed=bool(gs.places_revealed),
+    )
+
+
+@router.post("/game/reveal", response_model=schemas.GameStatusOut)
+def game_reveal(db: Session = Depends(get_db)):
+    gs = db.get(GameState, 1)
+    if not gs:
+        raise HTTPException(400, "Game not started")
+    gs.places_revealed = True
+    db.commit()
+    count = db.query(User).count()
+    return schemas.GameStatusOut(
+        exists=True, started=gs.tasks_assigned, started_at=gs.started_at,
+        player_count=count, server_time=datetime.utcnow(),
+        places_revealed=True,
     )
 
 
@@ -93,7 +110,6 @@ def dashboard(user_id: str, db: Session = Depends(get_db)):
 
     gs = db.get(GameState, 1)
     started = bool(gs and gs.tasks_assigned)
-    # латекомеру таски вже призначені — для нього гра завжди "почалась"
     if user.is_latecomer:
         started = True
 
@@ -126,10 +142,11 @@ def dashboard(user_id: str, db: Session = Depends(get_db)):
         server_time=datetime.utcnow(),
         players=players,
         assignments=assignments_out,
+        places_revealed=bool(gs and gs.places_revealed),
     )
 
 
-# ---------- Media: presign + complete ----------
+# ---------- Media: task upload + complete ----------
 
 @router.post("/u/{user_id}/assignments/{assignment_id}/presign",
              response_model=schemas.PresignOut)
@@ -147,7 +164,6 @@ def presign(user_id: str, assignment_id: int,
 async def upload_proxy(user_id: str, assignment_id: int,
                        file: UploadFile = File(...),
                        db: Session = Depends(get_db)):
-    """Proxy file upload: browser → backend → R2. Avoids CORS issues."""
     a = db.get(Assignment, assignment_id)
     if not a or a.user_id != user_id:
         raise HTTPException(404, "Assignment not found")
@@ -165,7 +181,6 @@ def complete_task(user_id: str, assignment_id: int,
     if not a or a.user_id != user_id:
         raise HTTPException(404, "Assignment not found")
 
-    # replace semantics: clear old media for this assignment
     db.query(Media).filter(Media.assignment_id == assignment_id).delete()
     for f in payload.files:
         db.add(Media(assignment_id=assignment_id, file_url=f.public_url,
@@ -177,6 +192,19 @@ def complete_task(user_id: str, assignment_id: int,
     db.flush()
 
     _recalc_user_completion(db, user_id, now)
+
+    if a.pair_id:
+        partner = (
+            db.query(Assignment)
+            .filter(Assignment.pair_id == a.pair_id, Assignment.id != a.id)
+            .first()
+        )
+        if partner and partner.status != AssignmentStatus.completed:
+            partner.status = AssignmentStatus.completed
+            partner.completed_at = now
+            db.flush()
+            _recalc_user_completion(db, partner.user_id, now)
+
     db.commit()
     db.refresh(a)
 
@@ -197,15 +225,35 @@ def complete_task(user_id: str, assignment_id: int,
 
 
 def _recalc_user_completion(db: Session, user_id: str, now: datetime):
-    """Якщо всі 5 тасок юзера completed — ставимо User.completed_at
-    (момент останньої заливки). Інакше скидаємо."""
     user = db.get(User, user_id)
     rows = db.query(Assignment).filter(Assignment.user_id == user_id).all()
     if rows and all(r.status == AssignmentStatus.completed for r in rows):
-        # час фінішу = найпізніший completed_at серед тасок
         user.completed_at = max(r.completed_at for r in rows)
     else:
         user.completed_at = None
+
+
+# ---------- Free upload ----------
+
+@router.post("/u/{user_id}/free-upload", response_model=schemas.PresignOut)
+async def free_upload(user_id: str,
+                      file: UploadFile = File(...),
+                      db: Session = Depends(get_db)):
+    """Upload media without a task — appears in slideshow with just player name."""
+    user = db.get(User, user_id)
+    if not user:
+        raise HTTPException(404, "Player not found")
+    data = await file.read()
+    content_type = file.content_type or "application/octet-stream"
+    public_url = upload_file_to_r2(file.filename or "upload", content_type, data)
+    media_type = MediaType.video if (content_type or "").startswith("video") else MediaType.image
+    db.add(FreeMedia(
+        user_id=user_id,
+        file_url=public_url,
+        media_type=media_type,
+    ))
+    db.commit()
+    return schemas.PresignOut(upload_url="", public_url=public_url)
 
 
 # ---------- Leaderboard ----------
@@ -231,29 +279,31 @@ def leaderboard(db: Session = Depends(get_db)):
             "is_winner": False,
         })
 
-    finished = [i for i in items if i["finished"]]
+    finished_list = [i for i in items if i["finished"]]
     in_progress = [i for i in items if not i["finished"]]
 
-    finished.sort(key=lambda x: x["completed_at"])      # раніше фініш = вище
+    finished_list.sort(key=lambda x: x["completed_at"])
     in_progress.sort(key=lambda x: x["completed_count"], reverse=True)
 
-    for item in finished[:3]:
+    for item in finished_list[:3]:
         item["is_winner"] = True
 
-    return [schemas.LeaderboardItem(**i) for i in finished + in_progress]
+    return [schemas.LeaderboardItem(**i) for i in finished_list + in_progress]
 
 
 # ---------- Slideshow ----------
 
 @router.get("/slideshow", response_model=list[schemas.SlideItem])
 def slideshow(db: Session = Depends(get_db)):
+    out = []
+
+    # task completions
     rows = (
         db.query(Assignment)
         .filter(Assignment.status == AssignmentStatus.completed)
         .order_by(Assignment.completed_at)
         .all()
     )
-    out = []
     for a in rows:
         if not a.media:
             continue
@@ -264,10 +314,31 @@ def slideshow(db: Session = Depends(get_db)):
             tgt = db.get(User, a.target_user_id)
             if tgt:
                 desc = desc.replace("{target}", tgt.name)
+        for m in a.media:
+            out.append(schemas.SlideItem(
+                id=f"assignment-{a.id}-{m.id}",
+                user_name=u.name if u else "?",
+                task_description=desc,
+                file_url=m.file_url,
+                media_type=m.media_type,
+                completed_at=a.completed_at,
+                is_free=False,
+            ))
+
+    # free uploads
+    free_rows = db.query(FreeMedia).order_by(FreeMedia.uploaded_at).all()
+    for fm in free_rows:
+        u = db.get(User, fm.user_id)
         out.append(schemas.SlideItem(
-            assignment_id=a.id, user_name=u.name if u else "?",
-            task_description=desc,
-            media=[schemas.MediaOut.model_validate(m) for m in a.media],
-            completed_at=a.completed_at,
+            id=f"free-{fm.id}",
+            user_name=u.name if u else "?",
+            task_description=None,
+            file_url=fm.file_url,
+            media_type=fm.media_type,
+            completed_at=fm.uploaded_at,
+            is_free=True,
         ))
+
+    # sort all by time
+    out.sort(key=lambda x: x.completed_at)
     return out

@@ -3,22 +3,6 @@ import { api } from '../lib/api'
 
 const PHOTO_MS = 10000
 
-function flatten(items) {
-  const slides = []
-  for (const it of items) {
-    for (const m of it.media) {
-      slides.push({
-        key: `${it.assignment_id}-${m.id}`,
-        user_name: it.user_name,
-        task: it.task_description,
-        url: m.file_url,
-        type: m.media_type,
-      })
-    }
-  }
-  return slides
-}
-
 export default function Slideshow() {
   const [slides, setSlides] = useState([])
   const [idx, setIdx] = useState(0)
@@ -29,9 +13,8 @@ export default function Slideshow() {
   const load = useCallback(async () => {
     try {
       const items = await api.slideshow()
-      const next = flatten(items)
-      slidesRef.current = next
-      setSlides(next)
+      slidesRef.current = items
+      setSlides(items)
     } catch { /* ignore */ }
   }, [])
 
@@ -42,7 +25,7 @@ export default function Slideshow() {
   }, [load])
 
   const advance = useCallback(() => {
-    setIdx((i) => {
+    setIdx(i => {
       const len = slidesRef.current.length || 1
       return (i + 1) % len
     })
@@ -52,10 +35,8 @@ export default function Slideshow() {
     clearTimeout(timerRef.current)
     const cur = slides[idx]
     if (!cur) return
-    if (cur.type === 'image') {
+    if (cur.media_type === 'image') {
       timerRef.current = setTimeout(advance, PHOTO_MS)
-    } else {
-      timerRef.current = setTimeout(advance, 60000)
     }
     return () => clearTimeout(timerRef.current)
   }, [idx, slides, advance])
@@ -73,11 +54,11 @@ export default function Slideshow() {
   return (
     <div className="fixed inset-0 z-20 bg-black flex flex-col items-center justify-center">
       <div className="absolute inset-0 flex items-center justify-center p-4">
-        {cur.type === 'video' ? (
+        {cur.media_type === 'video' ? (
           <video
             ref={videoRef}
-            key={cur.key}
-            src={cur.url}
+            key={cur.file_url}
+            src={cur.file_url}
             autoPlay
             muted={false}
             playsInline
@@ -86,8 +67,11 @@ export default function Slideshow() {
             className="max-h-full max-w-full object-contain rounded-xl"
           />
         ) : (
-          <img key={cur.key} src={cur.url}
-            className="max-h-full max-w-full object-contain rounded-xl animate-pop" />
+          <img
+            key={cur.file_url}
+            src={cur.file_url}
+            className="max-h-full max-w-full object-contain rounded-xl animate-pop"
+          />
         )}
       </div>
 
@@ -95,7 +79,11 @@ export default function Slideshow() {
         <p className="font-display font-extrabold text-4xl sm:text-5xl text-zest leading-none mb-2">
           {cur.user_name}
         </p>
-        <p className="font-body text-cream/90 text-lg sm:text-2xl max-w-4xl">{cur.task}</p>
+        {cur.task_description ? (
+          <p className="font-body text-cream/90 text-lg sm:text-2xl max-w-4xl">{cur.task_description}</p>
+        ) : (
+          <p className="font-body text-cream/50 text-lg italic">just sharing 📸</p>
+        )}
       </div>
 
       <div className="absolute top-6 right-8 font-body text-cream/40 text-sm tabular-nums">

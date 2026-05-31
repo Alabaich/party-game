@@ -2,17 +2,27 @@ import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { api, store } from '../lib/api'
 
+function parseError(e) {
+  try {
+    const parsed = JSON.parse(e.message)
+    return parsed?.detail || e.message
+  } catch {
+    return e.message
+  }
+}
+
 export default function Register() {
   const nav = useNavigate()
   const [name, setName] = useState('')
   const [showPopup, setShowPopup] = useState(false)
+  const [showDuplicatePopup, setShowDuplicatePopup] = useState(false)
+  const [duplicatePlayer, setDuplicatePlayer] = useState(null)
   const [pendingDrinking, setPendingDrinking] = useState(null)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState('')
   const [showLogin, setShowLogin] = useState(false)
   const [players, setPlayers] = useState([])
 
-  // Re-entry: if UUID is in localStorage — go straight to dashboard.
   useEffect(() => {
     const u = store.getUuid()
     if (u) nav(`/u/${u}`)
@@ -26,7 +36,23 @@ export default function Register() {
       store.setUuid(user.id)
       nav(`/u/${user.id}`)
     } catch (e) {
-      setErr(e.message || 'Registration error')
+      const msg = parseError(e)
+      if (msg.includes('already taken')) {
+        try {
+          const all = await api.players()
+          const found = all.find((p) => p.name.toLowerCase() === name.trim().toLowerCase())
+          if (found) {
+            setDuplicatePlayer(found)
+            setShowDuplicatePopup(true)
+          } else {
+            setErr(msg)
+          }
+        } catch {
+          setErr(msg)
+        }
+      } else {
+        setErr(msg || 'Registration error')
+      }
     } finally { setBusy(false) }
   }
 
@@ -52,7 +78,7 @@ export default function Register() {
       <div className="w-full max-w-sm space-y-5">
         <input
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => { setName(e.target.value); setErr('') }}
           placeholder="Your name"
           className="w-full bg-ink border-2 border-cream/30 focus:border-zest rounded-2xl px-5 py-4 text-lg outline-none transition-colors placeholder:text-cream/40"
         />
@@ -77,7 +103,7 @@ export default function Register() {
         </button>
       </div>
 
-      {/* Fun popup for those who chose "No" */}
+      {/* Popup для тих хто обрав "No" */}
       {showPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
           <div className="animate-pop bg-punch text-cream rounded-3xl p-8 max-w-sm text-center shadow-2xl border-4 border-zest">
@@ -95,7 +121,42 @@ export default function Register() {
         </div>
       )}
 
-      {/* Log in as existing player */}
+      {/* Popup дублікату імені */}
+      {showDuplicatePopup && duplicatePlayer && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
+          <div className="animate-pop bg-ink border-2 border-zest/50 rounded-3xl p-8 max-w-sm text-center shadow-2xl">
+            <div className="text-5xl mb-4">👀</div>
+            <p className="font-display font-extrabold text-2xl text-zest leading-tight mb-2">
+              Hey, {duplicatePlayer.name}!
+            </p>
+            <p className="text-cream/70 text-sm mb-6">
+              Someone already registered with this name. Is that you?
+            </p>
+            <div className="space-y-3">
+              <button
+                onClick={() => {
+                  store.setUuid(duplicatePlayer.id)
+                  nav(`/u/${duplicatePlayer.id}`)
+                }}
+                className="w-full bg-zest text-ink font-display font-bold text-lg py-3 rounded-2xl active:scale-95 transition-transform">
+                Yes, log me in 👋
+              </button>
+              <button
+                onClick={() => {
+                  setShowDuplicatePopup(false)
+                  setDuplicatePlayer(null)
+                  setName('')
+                  setErr('')
+                }}
+                className="w-full bg-cream/10 text-cream font-bold py-3 rounded-2xl active:scale-95 transition-transform">
+                No, I'll pick another name
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Залогінитись як наявний гравець */}
       {showLogin && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-4 pb-4">
           <div className="animate-pop bg-ink border-2 border-cream/20 rounded-3xl p-6 max-w-sm w-full max-h-[70vh] overflow-auto">

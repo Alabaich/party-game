@@ -136,7 +136,8 @@ def assign_tasks_for_all(db: Session):
     # (потрібна пара, де обидва п'ють), тож хапаємо доступні пари заздалегідь
     paired_tasks.sort(key=lambda t: (not t.is_alcoholic))
 
-    MAX_PAIR_SLOTS = max(1, TASKS_PER_USER - 2)   # скільки пар максимум на гравця
+    n = len(users)
+    MAX_PAIR_SLOTS = 2 if n < 10 else max(1, TASKS_PER_USER - 2)
 
     def pair_count(uid: str) -> int:
         return sum(1 for a in bucket[uid] if a.pair_id)

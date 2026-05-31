@@ -31,10 +31,10 @@ export default function Leaderboard() {
   }, [load])
 
   async function onStart() {
-    if (!confirm('Почати гру? Усім гравцям призначаться завдання, відлік часу піде.')) return
+    if (!confirm('Start the game? All players will be assigned tasks and the timer will begin.')) return
     setStarting(true); setErr('')
     try { await api.startGame(); await load() }
-    catch (e) { setErr(e.message || 'Не вдалося стартувати') }
+    catch (e) { setErr(e.message || 'Failed to start') }
     finally { setStarting(false) }
   }
 
@@ -45,25 +45,25 @@ export default function Leaderboard() {
   return (
     <div className="relative z-10 min-h-screen text-cream font-body px-5 py-6 max-w-lg mx-auto">
       <header className="flex items-center justify-between mb-6">
-        <h1 className="font-display font-extrabold text-3xl text-zest">🏆 Рейтинг</h1>
-        <Link to="/slideshow" className="bg-cream/10 px-3 py-2 rounded-xl text-xs">📺 Слайдшоу</Link>
+        <h1 className="font-display font-extrabold text-3xl text-zest">🏆 Leaderboard</h1>
+        <Link to="/slideshow" className="bg-cream/10 px-3 py-2 rounded-xl text-xs">📺 Slideshow</Link>
       </header>
 
-      {/* Кнопка СТАРТ — поки гра не почалась */}
+      {/* START button — shown while game hasn't started */}
       {game && !game.started && (
         <div className="mb-6 bg-punch/15 border-2 border-punch/40 rounded-2xl p-5 text-center">
-          <p className="text-cream/80 mb-1">Зареєстровано гравців: <b className="text-zest">{game.player_count}</b></p>
-          <p className="text-cream/50 text-sm mb-4">Натисни, коли всі на місці</p>
+          <p className="text-cream/80 mb-1">Players registered: <b className="text-zest">{game.player_count}</b></p>
+          <p className="text-cream/50 text-sm mb-4">Press when everyone is ready</p>
           <button onClick={onStart} disabled={starting || game.player_count === 0}
             className="w-full bg-punch text-cream font-display font-extrabold text-2xl py-4 rounded-2xl active:scale-95 transition-transform disabled:opacity-50">
-            {starting ? 'СТАРТУЄМО…' : '🚀 СТАРТ ГРИ'}
+            {starting ? 'STARTING…' : '🚀 START GAME'}
           </button>
           {err && <p className="text-punch text-sm mt-3">{err}</p>}
         </div>
       )}
 
       {game && game.started && (
-        <p className="text-mint text-center text-sm mb-4 tracking-widest">ГРА ТРИВАЄ ▶</p>
+        <p className="text-mint text-center text-sm mb-4 tracking-widest">GAME IN PROGRESS ▶</p>
       )}
 
       <div className="space-y-2">
@@ -83,21 +83,21 @@ export default function Leaderboard() {
             {it.finished ? (
               <div className="text-right">
                 <p className="text-mint font-bold tabular-nums">{fmtDuration(it.duration_seconds)}</p>
-                <p className="text-cream/40 text-xs">час</p>
+                <p className="text-cream/40 text-xs">time</p>
               </div>
             ) : (
               <div className="text-right">
                 <p className="text-zest font-bold tabular-nums">{it.completed_count}/{totalTasks}</p>
-                <p className="text-cream/40 text-xs">виконано</p>
+                <p className="text-cream/40 text-xs">done</p>
               </div>
             )}
           </div>
         ))}
-        {items.length === 0 && <p className="text-cream/40 text-center py-10">Поки порожньо</p>}
+        {items.length === 0 && <p className="text-cream/40 text-center py-10">Nothing here yet</p>}
       </div>
 
       <Link to="/" className="block text-center text-cream/40 text-sm mt-8 underline underline-offset-4">
-        На головну
+        Back to home
       </Link>
     </div>
   )

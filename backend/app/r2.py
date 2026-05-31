@@ -14,11 +14,6 @@ _s3 = boto3.client(
 
 
 def make_presigned_put(filename: str, content_type: str) -> tuple[str, str]:
-    """Повертає (upload_url, public_url).
-
-    Фронт робить HTTP PUT на upload_url з тілом=файл і заголовком
-    Content-Type рівним content_type. Після успіху медіа доступне за public_url.
-    """
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
     key = f"{uuid.uuid4()}.{ext}"
 
@@ -33,3 +28,16 @@ def make_presigned_put(filename: str, content_type: str) -> tuple[str, str]:
     )
     public_url = f"{settings.R2_PUBLIC_BASE_URL.rstrip('/')}/{key}"
     return upload_url, public_url
+
+
+def upload_file_to_r2(filename: str, content_type: str, data: bytes) -> str:
+    """Upload file bytes server-side and return the public URL."""
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
+    key = f"{uuid.uuid4()}.{ext}"
+    _s3.put_object(
+        Bucket=settings.R2_BUCKET,
+        Key=key,
+        Body=data,
+        ContentType=content_type,
+    )
+    return f"{settings.R2_PUBLIC_BASE_URL.rstrip('/')}/{key}"

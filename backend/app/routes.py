@@ -1,5 +1,5 @@
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from .database import get_db
 from .config import settings
@@ -8,7 +8,7 @@ from .models import (
     User, GameState, Task, Assignment, Media,
     AssignmentStatus, TaskType,
 )
-from .r2 import make_presigned_put
+from .r2 import make_presigned_put, upload_file_to_r2
 from .scheduler import start_game
 from .assignment import assign_tasks_for_latecomer
 
@@ -75,7 +75,7 @@ def game_status(db: Session = Depends(get_db)):
 def game_start(db: Session = Depends(get_db)):
     gs = start_game(db)
     if gs is None:
-        raise HTTPException(400, "Ще нема жодного гравця")
+        raise HTTPException(400, "No players registered yet")
     count = db.query(User).count()
     return schemas.GameStatusOut(
         exists=True, started=gs.tasks_assigned, started_at=gs.started_at,
@@ -89,7 +89,7 @@ def game_start(db: Session = Depends(get_db)):
 def dashboard(user_id: str, db: Session = Depends(get_db)):
     user = db.get(User, user_id)
     if not user:
-        raise HTTPException(404, "Гравця не знайдено")
+        raise HTTPException(404, "Player not found")
 
     gs = db.get(GameState, 1)
     started = bool(gs and gs.tasks_assigned)
@@ -137,9 +137,24 @@ def presign(user_id: str, assignment_id: int,
             payload: schemas.PresignIn, db: Session = Depends(get_db)):
     a = db.get(Assignment, assignment_id)
     if not a or a.user_id != user_id:
-        raise HTTPException(404, "Завдання не знайдено")
+        raise HTTPException(404, "Assignment not found")
     upload_url, public_url = make_presigned_put(payload.filename, payload.content_type)
     return schemas.PresignOut(upload_url=upload_url, public_url=public_url)
+
+
+@router.post("/u/{user_id}/assignments/{assignment_id}/upload",
+             response_model=schemas.PresignOut)
+async def upload_proxy(user_id: str, assignment_id: int,
+                       file: UploadFile = File(...),
+                       db: Session = Depends(get_db)):
+    """Proxy file upload: browser → backend → R2. Avoids CORS issues."""
+    a = db.get(Assignment, assignment_id)
+    if not a or a.user_id != user_id:
+        raise HTTPException(404, "Assignment not found")
+    data = await file.read()
+    content_type = file.content_type or "application/octet-stream"
+    public_url = upload_file_to_r2(file.filename or "upload", content_type, data)
+    return schemas.PresignOut(upload_url="", public_url=public_url)
 
 
 @router.post("/u/{user_id}/assignments/{assignment_id}/complete",
@@ -148,9 +163,9 @@ def complete_task(user_id: str, assignment_id: int,
                   payload: schemas.CompleteTaskIn, db: Session = Depends(get_db)):
     a = db.get(Assignment, assignment_id)
     if not a or a.user_id != user_id:
-        raise HTTPException(404, "Завдання не знайдено")
+        raise HTTPException(404, "Assignment not found")
 
-    # replace-семантика: чистимо старі медіа цього завдання
+    # replace semantics: clear old media for this assignment
     db.query(Media).filter(Media.assignment_id == assignment_id).delete()
     for f in payload.files:
         db.add(Media(assignment_id=assignment_id, file_url=f.public_url,

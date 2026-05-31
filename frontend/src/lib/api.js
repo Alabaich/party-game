@@ -1,4 +1,3 @@
-// Базовий префікс API. У проді Caddy віддає /api → backend.
 const API = import.meta.env.VITE_API_BASE || '/api'
 
 async function jfetch(path, opts = {}) {
@@ -22,32 +21,30 @@ export const api = {
   startGame: () => jfetch('/game/start', { method: 'POST' }),
   leaderboard: () => jfetch('/leaderboard'),
   slideshow: () => jfetch('/slideshow'),
-  presign: (uuid, aid, filename, content_type) =>
-    jfetch(`/u/${uuid}/assignments/${aid}/presign`, {
-      method: 'POST', body: JSON.stringify({ filename, content_type }),
-    }),
   complete: (uuid, aid, files) =>
     jfetch(`/u/${uuid}/assignments/${aid}/complete`, {
       method: 'POST', body: JSON.stringify({ files }),
     }),
 }
 
-// Завантаження одного файлу: presign -> PUT у R2 -> повертаємо публічний URL.
+// Upload a single file via backend proxy (avoids R2 CORS issues).
 export async function uploadFile(uuid, assignmentId, file) {
-  const { upload_url, public_url } = await api.presign(
-    uuid, assignmentId, file.name, file.type || 'application/octet-stream'
-  )
-  const put = await fetch(upload_url, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type || 'application/octet-stream' },
-    body: file,
+  const form = new FormData()
+  form.append('file', file)
+  const res = await fetch(`${API}/u/${uuid}/assignments/${assignmentId}/upload`, {
+    method: 'POST',
+    body: form,
   })
-  if (!put.ok) throw new Error('Не вдалося завантажити файл у сховище')
+  if (!res.ok) {
+    const t = await res.text().catch(() => '')
+    throw new Error(t || `Upload failed: HTTP ${res.status}`)
+  }
+  const { public_url } = await res.json()
   const media_type = (file.type || '').startsWith('video') ? 'video' : 'image'
   return { public_url, media_type }
 }
 
-// Завантаження кількох файлів і фіналізація завдання.
+// Upload multiple files and finalize the assignment.
 export async function uploadAndComplete(uuid, assignmentId, fileList) {
   const files = []
   for (const f of Array.from(fileList)) {
@@ -56,7 +53,7 @@ export async function uploadAndComplete(uuid, assignmentId, fileList) {
   return api.complete(uuid, assignmentId, files)
 }
 
-// localStorage helpers для re-entry.
+// localStorage helpers for re-entry.
 export const store = {
   getUuid: () => localStorage.getItem('player_uuid'),
   setUuid: (u) => localStorage.setItem('player_uuid', u),

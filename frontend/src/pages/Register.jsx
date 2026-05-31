@@ -12,28 +12,28 @@ export default function Register() {
   const [showLogin, setShowLogin] = useState(false)
   const [players, setPlayers] = useState([])
 
-  // Re-entry: якщо в localStorage є UUID — одразу на дашборд.
+  // Re-entry: if UUID is in localStorage — go straight to dashboard.
   useEffect(() => {
     const u = store.getUuid()
     if (u) nav(`/u/${u}`)
   }, [nav])
 
   async function submit(isDrinking) {
-    if (!name.trim()) { setErr('Введи імʼя'); return }
+    if (!name.trim()) { setErr('Enter your name'); return }
     setBusy(true); setErr('')
     try {
       const user = await api.register(name.trim(), isDrinking)
       store.setUuid(user.id)
       nav(`/u/${user.id}`)
     } catch (e) {
-      setErr(e.message || 'Помилка реєстрації')
+      setErr(e.message || 'Registration error')
     } finally { setBusy(false) }
   }
 
   function onChoose(isDrinking) {
-    if (!name.trim()) { setErr('Спершу введи імʼя'); return }
+    if (!name.trim()) { setErr('Enter your name first'); return }
     if (isDrinking) { submit(true) }
-    else { setPendingDrinking(false); setShowPopup(true) }  // веселий попап
+    else { setPendingDrinking(false); setShowPopup(true) }
   }
 
   async function openLogin() {
@@ -45,7 +45,7 @@ export default function Register() {
     <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-cream font-body">
       <div className="animate-float mb-2 text-6xl">🍻</div>
       <h1 className="font-display font-extrabold text-5xl sm:text-6xl text-zest text-center leading-none mb-1">
-        ВЕЧІРКА
+        PARTY
       </h1>
       <p className="text-mint mb-10 tracking-widest text-sm">QUEST · CHALLENGE · CHAOS</p>
 
@@ -53,19 +53,19 @@ export default function Register() {
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="Твоє імʼя"
+          placeholder="Your name"
           className="w-full bg-ink border-2 border-cream/30 focus:border-zest rounded-2xl px-5 py-4 text-lg outline-none transition-colors placeholder:text-cream/40"
         />
 
-        <p className="text-center text-cream/80 pt-2">Будеш пити алкоголь сьогодні?</p>
+        <p className="text-center text-cream/80 pt-2">Will you be drinking alcohol tonight?</p>
         <div className="grid grid-cols-2 gap-3">
           <button disabled={busy} onClick={() => onChoose(true)}
             className="bg-mint text-ink font-display font-bold text-xl py-4 rounded-2xl active:scale-95 transition-transform disabled:opacity-50">
-            ТАК 🍷
+            YES 🍷
           </button>
           <button disabled={busy} onClick={() => onChoose(false)}
             className="bg-cream/10 border-2 border-cream/30 text-cream font-display font-bold text-xl py-4 rounded-2xl active:scale-95 transition-transform disabled:opacity-50">
-            НІ 🙅
+            NO 🙅
           </button>
         </div>
 
@@ -73,37 +73,37 @@ export default function Register() {
 
         <button onClick={openLogin}
           className="w-full text-cream/50 text-sm underline underline-offset-4 pt-4">
-          Я вже реєструвався — увійти
+          Already registered — log back in
         </button>
       </div>
 
-      {/* Веселий попап для тих, хто обрав "Ні" */}
+      {/* Fun popup for those who chose "No" */}
       {showPopup && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-6">
           <div className="animate-pop bg-punch text-cream rounded-3xl p-8 max-w-sm text-center shadow-2xl border-4 border-zest">
             <div className="text-6xl mb-4">🍻</div>
             <p className="font-display font-extrabold text-2xl leading-tight mb-6">
-              Шкода, але пити все одно доведеться!
+              Too bad, but you'll still have to drink!
             </p>
             <button
               disabled={busy}
               onClick={() => { setShowPopup(false); submit(false) }}
               className="w-full bg-zest text-ink font-display font-bold text-lg py-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-50">
-              Ну добре 😅
+              Fine 😅
             </button>
           </div>
         </div>
       )}
 
-      {/* Логін як наявний гравець */}
+      {/* Log in as existing player */}
       {showLogin && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 px-4 pb-4">
           <div className="animate-pop bg-ink border-2 border-cream/20 rounded-3xl p-6 max-w-sm w-full max-h-[70vh] overflow-auto">
             <div className="flex justify-between items-center mb-4">
-              <h2 className="font-display font-bold text-xl text-zest">Обери себе</h2>
+              <h2 className="font-display font-bold text-xl text-zest">Pick yourself</h2>
               <button onClick={() => setShowLogin(false)} className="text-cream/50 text-2xl">×</button>
             </div>
-            {players.length === 0 && <p className="text-cream/50 text-sm">Поки нема гравців</p>}
+            {players.length === 0 && <p className="text-cream/50 text-sm">No players yet</p>}
             <div className="space-y-2">
               {players.map((p) => (
                 <button key={p.id}

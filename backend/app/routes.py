@@ -233,6 +233,27 @@ def _recalc_user_completion(db: Session, user_id: str, now: datetime):
         user.completed_at = None
 
 
+# ---------- Download proxy ----------
+
+@router.get("/download")
+async def download_proxy(url: str):
+    """Proxy download to force Content-Disposition: attachment for cross-origin files."""
+    import httpx
+    from fastapi.responses import StreamingResponse
+    import urllib.parse
+    # extract filename from url
+    path = urllib.parse.urlparse(url).path
+    filename = path.split("/")[-1] or "download"
+    async with httpx.AsyncClient() as client:
+        r = await client.get(url)
+        content_type = r.headers.get("content-type", "application/octet-stream")
+        return StreamingResponse(
+            iter([r.content]),
+            media_type=content_type,
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        )
+
+
 # ---------- Free upload ----------
 
 @router.post("/u/{user_id}/free-upload", response_model=schemas.PresignOut)

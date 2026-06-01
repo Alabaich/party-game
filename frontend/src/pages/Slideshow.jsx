@@ -31,6 +31,19 @@ export default function Slideshow() {
     })
   }, [])
 
+  const prev = useCallback(() => {
+    clearTimeout(timerRef.current)
+    setIdx(i => {
+      const len = slidesRef.current.length || 1
+      return (i - 1 + len) % len
+    })
+  }, [])
+
+  const next = useCallback(() => {
+    clearTimeout(timerRef.current)
+    advance()
+  }, [advance])
+
   useEffect(() => {
     clearTimeout(timerRef.current)
     const cur = slides[idx]
@@ -89,6 +102,15 @@ export default function Slideshow() {
       <div className="absolute top-6 right-8 font-body text-cream/40 text-sm tabular-nums">
         {(idx % slides.length) + 1} / {slides.length}
       </div>
+
+      <button onClick={prev}
+        className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white text-3xl w-12 h-12 rounded-full flex items-center justify-center transition-colors">
+        ‹
+      </button>
+      <button onClick={next}
+        className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/80 text-white text-3xl w-12 h-12 rounded-full flex items-center justify-center transition-colors">
+        ›
+      </button>
     </div>
   )
 }

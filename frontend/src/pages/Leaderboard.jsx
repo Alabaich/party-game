@@ -14,24 +14,15 @@ function fmtDuration(sec) {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`
 }
 
-function QRCode({ url, size = 200 }) {
-  const canvasRef = useRef(null)
-  useEffect(() => {
-    const img = new Image()
-    img.crossOrigin = 'anonymous'
-    img.src = `https://chart.googleapis.com/chart?cht=qr&chs=${size}x${size}&chl=${encodeURIComponent(url)}&choe=UTF-8&chld=M|2`
-    img.onload = () => {
-      const canvas = canvasRef.current
-      if (!canvas) return
-      const ctx = canvas.getContext('2d')
-      canvas.width = size
-      canvas.height = size
-      ctx.fillStyle = '#fff'
-      ctx.fillRect(0, 0, size, size)
-      ctx.drawImage(img, 0, 0, size, size)
-    }
-  }, [url, size])
-  return <canvas ref={canvasRef} width={size} height={size} className="rounded-2xl" style={{ imageRendering: 'pixelated' }} />
+function QRCode({ size = 220 }) {
+  return (
+    <img
+      src={`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(GAME_URL)}&bgcolor=ffffff&color=000000&margin=10`}
+      width={size}
+      height={size}
+      className="rounded-2xl"
+    />
+  )
 }
 
 // ─── Slideshow hook ────────────────────────────────────────────────────────

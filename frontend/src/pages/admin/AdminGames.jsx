@@ -12,6 +12,18 @@ export function useHostGuard() {
   return me
 }
 
+export function gameStatus(g) {
+  if (g.is_draft) return ['draft', 'bg-cream/10 text-cream/60']
+  if (!g.started) return ['open for sign-up', 'bg-zest/20 text-zest']
+  if (!g.places_revealed) return ['live', 'bg-mint/20 text-mint']
+  return ['finished', 'bg-cream/10 text-cream/60']
+}
+
+export function StatusBadge({ game }) {
+  const [label, cls] = gameStatus(game)
+  return <span className={`shrink-0 text-xs px-2 py-1 rounded-lg ${cls}`}>{label}</span>
+}
+
 export default function AdminGames() {
   const nav = useNavigate()
   const me = useHostGuard()
@@ -82,9 +94,7 @@ export default function AdminGames() {
                 code <span className="text-zest font-bold tracking-widest">{g.code}</span> · {g.player_count} players · {g.task_count} tasks
               </p>
             </div>
-            <span className={`text-xs px-2 py-1 rounded-lg ${g.started ? (g.places_revealed ? 'bg-cream/10 text-cream/60' : 'bg-mint/20 text-mint') : 'bg-zest/20 text-zest'}`}>
-              {g.started ? (g.places_revealed ? 'finished' : 'live') : 'not started'}
-            </span>
+            <StatusBadge game={g} />
           </Link>
         ))}
         {games.length === 0 && <p className="text-cream/40 text-center py-6">No games yet</p>}

@@ -39,7 +39,7 @@ def create_game(payload: schemas.GameCreateIn, acc: Account = Depends(current_ac
     s.prizes = [Prize(place="1", title=""), Prize(place="2", title=""),
                 Prize(place="3", title="")]
     game = Game(account_id=acc.id, name=payload.name, code=new_game_code(db),
-                settings=s.model_dump())
+                settings=s.model_dump(), is_draft=True)
     db.add(game)
     db.flush()
     load_pack_into_game(db, game, pack)
@@ -74,8 +74,28 @@ def update_game(payload: schemas.GameUpdateIn, game: Game = Depends(owned_game),
     return views.game_admin(db, game)
 
 
+@router.post("/games/{game_id}/publish", response_model=schemas.GameAdminOut)
+def publish(game: Game = Depends(owned_game), db: Session = Depends(get_db)):
+    if not db.query(Task.id).filter(Task.game_id == game.id).first():
+        raise HTTPException(400, "Add tasks first")
+    game.is_draft = False
+    db.commit()
+    return views.game_admin(db, game)
+
+
+@router.post("/games/{game_id}/unpublish", response_model=schemas.GameAdminOut)
+def unpublish(game: Game = Depends(owned_game), db: Session = Depends(get_db)):
+    if game.tasks_assigned:
+        raise HTTPException(409, "The game has already started")
+    game.is_draft = True
+    db.commit()
+    return views.game_admin(db, game)
+
+
 @router.post("/games/{game_id}/start", response_model=schemas.GameAdminOut)
 def start(game: Game = Depends(owned_game), db: Session = Depends(get_db)):
+    if game.is_draft:
+        raise HTTPException(400, "Publish the game first")
     if views.player_count(db, game) == 0:
         raise HTTPException(400, "No players yet")
     if not db.query(Task.id).filter(Task.game_id == game.id).first():

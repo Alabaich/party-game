@@ -25,6 +25,8 @@ class Game(Base):
     settings = Column(JSON, nullable=True)
 
     # --- lifecycle ---
+    # draft = host is still setting it up; nobody can join yet
+    is_draft = Column(Boolean, nullable=False, default=False)
     first_user_joined_at = Column(DateTime, nullable=True)
     started_at = Column(DateTime, nullable=True)
     tasks_assigned = Column(Boolean, nullable=False, default=False)

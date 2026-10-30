@@ -39,7 +39,9 @@ export default function Join() {
         <div>
           <div className="text-6xl mb-4">{emoji}</div>
           <p className="font-display font-bold text-2xl text-zest mb-2">{game.name}</p>
-          <p>This game has already started and isn't accepting new players.</p>
+          <p>{game.is_draft
+            ? "This game isn't open yet. Check back soon!"
+            : "This game has already started and isn't accepting new players."}</p>
         </div>
       </Center>
     )

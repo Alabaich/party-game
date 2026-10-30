@@ -5,7 +5,7 @@ import {
   useTheme, QRCode, joinUrl, fmtDuration, placeLabel, Modal,
   THEME_EMOJI, TYPE_LABEL, TYPE_COLOR,
 } from '../../lib/ui'
-import { useHostGuard } from './AdminGames'
+import { useHostGuard, StatusBadge } from './AdminGames'
 
 const TABS = [
   ['control', '🎛 Control'], ['settings', '⚙️ Settings'], ['tasks', '🎯 Tasks'],
@@ -35,8 +35,8 @@ export default function AdminGame() {
           {THEME_EMOJI[game.settings.theme]} {game.name}
         </h1>
         <p className="text-cream/50 text-xs mt-1">
-          code <span className="text-zest font-bold tracking-widest">{game.code}</span> · {game.player_count} players ·{' '}
-          {game.started ? (game.places_revealed ? 'places revealed' : 'live') : 'not started'}
+          code <span className="text-zest font-bold tracking-widest">{game.code}</span> · {game.player_count} players{' '}
+          <StatusBadge game={game} />
         </p>
       </header>
       <nav className="flex gap-1 overflow-x-auto mb-6 -mx-1 px-1">
@@ -98,7 +98,16 @@ function Control({ game, reload }) {
 
       <div className="card p-5 space-y-3">
         <p className="label">Game</p>
-        {!game.started ? (
+        {game.is_draft ? (
+          <>
+            <p className="text-cream/70 text-sm">
+              📝 <b className="text-cream">Draft.</b> Set everything up in Settings and Tasks. Nobody can join until you publish;
+              the link shows "not open yet".
+            </p>
+            <button disabled={busy} onClick={() => act(host.publish, 'Publish the game? People will be able to sign up with the link / QR.')}
+              className="btn-primary w-full text-lg">📣 Publish — open sign-up</button>
+          </>
+        ) : !game.started ? (
           <>
             <p className="text-cream/70 text-sm">
               {game.player_count} players joined. Starting assigns {game.tasks_per_user} tasks to everyone and starts the clock.
@@ -109,6 +118,8 @@ function Control({ game, reload }) {
               className="w-full bg-punch text-cream font-display font-extrabold text-2xl py-4 rounded-2xl active:scale-95 transition-transform disabled:opacity-50">
               🚀 START GAME
             </button>
+            <button disabled={busy} onClick={() => act(host.unpublish, 'Close sign-up and go back to draft? Players who already joined stay.')}
+              className="text-cream/40 text-xs underline underline-offset-2 w-full">Back to draft</button>
           </>
         ) : !game.places_revealed ? (
           <>

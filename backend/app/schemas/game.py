@@ -20,6 +20,7 @@ class GamePublicOut(BaseModel):
     name: str
     settings: GameSettings
     tasks_per_user: int
+    is_draft: bool
     started: bool
     started_at: datetime | None
     places_revealed: bool

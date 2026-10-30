@@ -191,7 +191,7 @@ export default function Screen() {
           <p className="text-cream/40 text-sm mb-8">code <span className="text-zest font-bold tracking-widest">{code}</span></p>
           <div className="w-full max-w-xs text-center">
             <p className="text-cream/80 mb-2">Players joined: <span className="text-zest font-bold text-3xl">{game.player_count}</span></p>
-            <p className="text-cream/40 text-sm">The game starts soon…</p>
+            <p className="text-cream/40 text-sm">{game.is_draft ? 'Registration opens soon…' : 'The game starts soon…'}</p>
           </div>
         </div>
         <div className="lg:w-1/2 flex flex-col justify-center px-10 py-12">

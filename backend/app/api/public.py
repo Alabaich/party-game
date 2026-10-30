@@ -33,6 +33,8 @@ def register(payload: schemas.RegisterIn, request: Request,
     name = " ".join(payload.name.split())
     if not name:
         raise HTTPException(400, "Enter your name")
+    if game.is_draft:
+        raise HTTPException(403, "This game isn't open yet")
     if not views.can_join(game):
         raise HTTPException(403, "This game has already started")
 

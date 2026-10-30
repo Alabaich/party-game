@@ -16,13 +16,15 @@ def player_count(db: Session, game: Game) -> int:
 
 
 def can_join(game: Game) -> bool:
+    if game.is_draft:
+        return False
     return not game.tasks_assigned or load_settings(game.settings).allow_late_join
 
 
 def game_public(db: Session, game: Game) -> schemas.GamePublicOut:
     return schemas.GamePublicOut(
         code=game.code, name=game.name, settings=load_settings(game.settings),
-        tasks_per_user=game.tasks_per_user,
+        tasks_per_user=game.tasks_per_user, is_draft=game.is_draft,
         started=game.tasks_assigned, started_at=game.started_at,
         places_revealed=game.places_revealed,
         player_count=player_count(db, game), can_join=can_join(game),

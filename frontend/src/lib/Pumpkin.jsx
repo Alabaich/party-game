@@ -25,7 +25,7 @@ function useQrModules(value) {
   }, [value])
 }
 
-export default function Pumpkin({ value, announce, className = '' }) {
+export default function Pumpkin({ value, announce, subtitle = 'JUST JOINED!', onClick, className = '' }) {
   const { size, cells } = useQrModules(value)
   // QR plate geometry (viewBox units)
   const plate = 250
@@ -35,14 +35,16 @@ export default function Pumpkin({ value, announce, className = '' }) {
   const py = 315 - plate / 2
 
   const face = !!announce
-  const [shown, setShown] = useState(announce)
-  useEffect(() => { if (announce) setShown(announce) }, [announce])
-  const name = (shown || '').slice(0, 24)
+  // keep the last text while the face fades out
+  const [shown, setShown] = useState({ announce, subtitle })
+  useEffect(() => { if (announce) setShown({ announce, subtitle }) }, [announce, subtitle])
+  const name = (shown.announce || '').slice(0, 24)
   const nameSize = name.length > 16 ? 36 : name.length > 11 ? 46 : name.length > 7 ? 56 : 66
 
   return (
-    <svg viewBox="0 0 600 560" className={`pumpkin ${face ? 'is-face' : ''} ${className}`} role="img"
-      aria-label={face ? `${name} just joined` : 'Scan the QR code to join'}>
+    <svg viewBox="0 0 600 560" className={`pumpkin ${face ? 'is-face' : ''} ${onClick ? 'cursor-pointer' : ''} ${className}`}
+      role="img" onClick={onClick}
+      aria-label={face ? `${name} ${shown.subtitle}` : 'Scan the QR code to join'}>
       <defs>
         <radialGradient id="pk-body" cx="50%" cy="40%" r="65%">
           <stop offset="0%" stopColor="#ffa53a" />
@@ -133,7 +135,7 @@ export default function Pumpkin({ value, announce, className = '' }) {
             <text x="300" y="418" textAnchor="middle" fontFamily='"Bricolage Grotesque", system-ui, sans-serif'
               fontWeight="800" fontSize={nameSize} fill="#ffd65e">{name}</text>
             <text x="300" y="452" textAnchor="middle" fontFamily='"Space Mono", monospace'
-              fontWeight="700" fontSize="20" letterSpacing="3" fill="#ffae3a">JUST JOINED!</text>
+              fontWeight="700" fontSize="20" letterSpacing="3" fill="#ffae3a">{shown.subtitle}</text>
           </g>
         </g>
       </g>

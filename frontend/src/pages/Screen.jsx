@@ -210,6 +210,19 @@ export default function Screen() {
 
   const { idx, currentNotif, advanceSlide, advanceNotif, queueLength } = useSlideshow(slides)
   const joined = useJoinAnnouncer(code)
+  // clicking the pumpkin makes it shout something; a real newcomer always wins
+  const [boo, setBoo] = useState(null)
+  const booTimer = useRef(null)
+  const poke = useCallback(() => {
+    if (joined || boo) return
+    const lines = ['BOO!', 'Happy Halloween!', 'Trick or treat?', 'Join us!', 'Rawr!']
+    setBoo(lines[Math.floor(Math.random() * lines.length)])
+    clearTimeout(booTimer.current)
+    booTimer.current = setTimeout(() => setBoo(null), 2600)
+  }, [joined, boo])
+  useEffect(() => () => clearTimeout(booTimer.current), [])
+  const pumpkinText = joined || boo
+  const pumpkinSub = joined ? 'JUST JOINED!' : 'SCAN ME TO JOIN!'
 
   const load = useCallback(async () => {
     try {
@@ -251,7 +264,7 @@ export default function Screen() {
           <h1 className="font-display font-extrabold text-4xl xl:text-5xl text-zest text-center mb-2">{emoji} {game.name}</h1>
           <p className="text-mint tracking-widest text-sm mb-2">{started ? 'LATE? SCAN TO JOIN' : 'SCAN TO JOIN'}</p>
           {spooky ? (
-            <Pumpkin value={url} announce={joined} className="w-full max-w-[34rem] h-[52vh]" />
+            <Pumpkin value={url} announce={pumpkinText} subtitle={pumpkinSub} onClick={poke} className="w-full max-w-[34rem] h-[52vh]" />
           ) : (
             <>
               <div className="bg-white p-3 rounded-2xl mb-2 shadow-2xl"><QRCode value={url} size={260} /></div>
@@ -318,7 +331,7 @@ export default function Screen() {
 
         <div className="flex items-center gap-4 mb-4 card p-3">
           {spooky
-            ? <Pumpkin value={url} announce={joined} className="w-72 h-72 shrink-0" />
+            ? <Pumpkin value={url} announce={pumpkinText} subtitle={pumpkinSub} onClick={poke} className="w-72 h-72 shrink-0" />
             : <div className="bg-white p-2 rounded-xl shrink-0"><QRCode value={url} size={150} /></div>}
           <div>
             <p className="text-mint tracking-widest text-xs">GAME IN PROGRESS ▶</p>

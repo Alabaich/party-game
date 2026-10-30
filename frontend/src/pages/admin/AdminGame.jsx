@@ -184,7 +184,7 @@ function StorageStatus() {
 const QUESTION_PRESETS = [
   ['Building (dropdown)', { kind: 'choice', text: 'Your building', options: ['80 Bond', '100 Bond'], required: true }],
   ['Unit number', { kind: 'text', text: 'Unit number', numeric: true, private: true, required: true }],
-  ['Email for photos (optional)', { kind: 'email', text: 'Want your photos from tonight? Leave your email and we\'ll send them', private: true, required: false }],
+  ['Email for photos (optional)', { kind: 'email', text: 'Email for your photos from tonight', private: true, required: false }],
   ['Yes / No', { kind: 'yesno', text: 'New question?', required: true }],
   ['Text', { kind: 'text', text: 'New question?', required: false }],
   ['Drinking alcohol?', { kind: 'alcohol', text: 'Will you be drinking alcohol tonight?', required: true }],

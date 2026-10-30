@@ -20,7 +20,7 @@ export default function Home() {
   }
 
   return (
-    <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-cream font-body">
+    <div className="relative z-10 min-h-screen flex flex-col items-center justify-center px-6 text-cream font-sans">
       <div className="animate-float mb-2 text-6xl">🎉</div>
       <h1 className="font-display font-extrabold text-5xl text-zest text-center leading-none mb-1">PARTY QUEST</h1>
       <p className="text-mint mb-10 tracking-widest text-sm">QUEST · CHALLENGE · MEET</p>

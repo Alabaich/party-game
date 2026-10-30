@@ -2,8 +2,10 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, uploadAndComplete, freeUpload, store, downloadUrl } from '../lib/api'
 import {
-  useTheme, fmtDuration, Center, Prizes, Modal, PhotoNotice, TYPE_LABEL, TYPE_COLOR, THEME_EMOJI,
+  useTheme, fmtDuration, Center, Prizes, Modal, PhotoNotice, TYPE_COLOR, THEME_EMOJI,
 } from '../lib/ui'
+
+const PHONE_TYPE_LABEL = { 1: 'SOLO', 2: 'FIND', 3: 'PAIR' }
 
 export default function Dashboard() {
   const { uuid } = useParams()
@@ -131,7 +133,7 @@ export default function Dashboard() {
       : `${winInfo.place}th`
 
     return (
-      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center text-cream font-body px-6 text-center">
+      <div className="relative z-10 min-h-screen flex flex-col items-center justify-center text-cream font-sans px-6 text-center">
         <div className="animate-float text-8xl mb-6">{placeEmoji}</div>
         <h1 className="font-display font-extrabold text-5xl text-zest mb-2">You finished!</h1>
         <p className="text-cream/60 text-sm tracking-widest mb-8">ALL TASKS COMPLETED</p>
@@ -185,62 +187,64 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="relative z-10 min-h-screen text-cream font-body px-5 py-6 max-w-lg mx-auto">
+    <div className="relative z-10 min-h-screen text-cream font-sans px-5 py-6 max-w-lg mx-auto">
       <input ref={fileRef} type="file" accept="image/*,video/*" multiple
         className="hidden" onChange={onFiles} />
       <input ref={freeFileRef} type="file" accept="image/*,video/*" multiple
         className="hidden" onChange={onFreeFiles} />
 
-      <header className="flex items-center justify-between mb-6">
-        <div>
-          <p className="text-cream/50 text-xs tracking-widest">{THEME_EMOJI[game.settings.theme]} {game.name.toUpperCase()}</p>
-          <h1 className="font-display font-extrabold text-2xl text-zest">{data.user.name}</h1>
+      <header className="flex items-start justify-between gap-3 mb-5">
+        <div className="min-w-0">
+          <p className="eyebrow truncate">{THEME_EMOJI[game.settings.theme]} {game.name}</p>
+          <h1 className="font-display font-extrabold text-3xl text-zest mt-1">Hi, {data.user.name}!</h1>
         </div>
-        <div className="flex gap-2 text-xs">
-          <button
-            onClick={() => freeFileRef.current?.click()}
-            disabled={freeUploading}
-            className="bg-cream/10 px-3 py-2 rounded-xl disabled:opacity-50">
-            {freeUploading ? '⏳' : '📸 Just Upload'}
+        <div className="flex gap-2 text-sm shrink-0">
+          <button onClick={() => freeFileRef.current?.click()} disabled={freeUploading}
+            className="bg-cream/10 px-3 py-2.5 rounded-2xl disabled:opacity-50 leading-tight">
+            {freeUploading ? '⏳' : <>📸<br />Share</>}
           </button>
-          <button onClick={openMyMedia} className="bg-cream/10 px-3 py-2 rounded-xl">🖼 Mine</button>
+          <button onClick={openMyMedia} className="bg-cream/10 px-3 py-2.5 rounded-2xl leading-tight">🖼<br />Mine</button>
         </div>
       </header>
 
       {!started ? (
-        <div className="text-center py-12">
+        <div className="text-center py-8">
           <div className="animate-float text-5xl mb-4">⏳</div>
           <p className="font-display font-extrabold text-3xl text-zest mb-2">Waiting to start</p>
-          <p className="text-cream/50 text-sm mb-8">The game will begin when the host gives the go</p>
+          <p className="text-cream/80 text-base mb-8">The game begins when the host says go. Keep this page open!</p>
           <PhotoNotice settings={game.settings} className="text-left mb-8" />
           {prizes.some((p) => p.title) && (
             <div className="text-left mb-8">
-              <p className="text-mint tracking-widest text-xs mb-3">PRIZES — FASTEST TO FINISH ALL TASKS</p>
+              <p className="eyebrow text-mint mb-3">Prizes for the fastest to finish</p>
               <Prizes prizes={prizes} />
             </div>
           )}
 
           <div className="text-left">
-            <p className="text-mint tracking-widest text-xs mb-3">PLAYERS ({data.players.length})</p>
-            <div className="space-y-2">
-              {data.players.map((p) => (
-                <div key={p.key}
-                  className={`rounded-xl px-4 py-3 border ${
-                    p.key === data.user_key
-                      ? 'bg-zest/15 border-zest/50 text-zest font-bold'
-                      : 'bg-cream/5 border-cream/15'
+            <p className="eyebrow text-mint mb-3">{data.players.length} {data.players.length === 1 ? 'player' : 'players'} joined</p>
+            <div className="flex flex-wrap gap-2">
+              {data.players.slice(0, 60).map((p) => (
+                <span key={p.key}
+                  className={`rounded-full px-3 py-1.5 text-[15px] border ${
+                    p.key === data.user_key ? 'bg-zest/15 border-zest/50 text-zest font-bold' : 'bg-cream/5 border-cream/15'
                   }`}>
                   {p.name}{p.key === data.user_key && ' (you)'}
-                </div>
+                </span>
               ))}
+              {data.players.length > 60 && <span className="px-3 py-1.5 text-cream/70">+{data.players.length - 60} more</span>}
             </div>
           </div>
         </div>
       ) : (
         <>
-          <div className="flex items-center justify-between mb-4">
-            <p className="font-display font-bold text-lg">Your tasks</p>
-            <span className="bg-cream/10 px-3 py-1 rounded-full text-sm">{done}/{data.assignments.length} ✓</span>
+          <div className="rounded-2xl border border-zest/35 bg-zest/[0.12] px-4 py-3 text-base leading-snug mb-5">
+            Do each task and tap <b>📷 Add photo</b> to prove it. Fastest to finish all {data.assignments.length} wins!
+          </div>
+          <div className="flex items-center justify-between mb-3">
+            <p className="font-display font-bold text-xl">Your tasks</p>
+            <span className="font-body font-bold text-mint bg-mint/15 px-3 py-1 rounded-full text-[15px] tabular-nums">
+              {done} / {data.assignments.length}
+            </span>
           </div>
 
           <div className="space-y-3">
@@ -249,56 +253,55 @@ export default function Dashboard() {
               const isUp = uploadingId === a.id
               return (
                 <div key={a.id}
-                  onClick={() => isDone ? setViewing(a) : triggerUpload(a.id)}
-                  className={`relative rounded-2xl p-4 border-2 transition-all cursor-pointer active:scale-[0.98] ${
-                    isDone ? 'bg-mint/10 border-mint/40' : 'bg-cream/5 border-cream/15'
-                  }`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`shrink-0 ${TYPE_COLOR[a.type]} text-ink text-[10px] font-bold px-2 py-1 rounded-md`}>
-                      {TYPE_LABEL[a.type]}
-                    </div>
-                    <div className="flex-1">
-                      <p className={`leading-snug ${isDone ? 'line-through text-cream/50' : ''}`}>
-                        {a.description}
-                      </p>
-                      {a.target_user_name && (
-                        <p className="text-cream/50 text-xs mt-1">
-                          👋 Look for <span className="text-zest">{a.target_user_name}</span>
-                          {a.target_hint && <> · {a.target_hint}</>}
-                        </p>
-                      )}
-                      {a.is_alcoholic && <span className="text-punch text-xs">🍺 alcoholic</span>}
-                      {a.substitute_description && (
-                        <p className="text-mint text-xs mt-1">🃏 Did instead: {a.substitute_description}</p>
-                      )}
-                      {!isDone && data.wildcards.length > 0 && data.wildcards_left > 0 && (
-                        <button onClick={(e) => { e.stopPropagation(); setWildFor(a) }}
-                          className="text-cream/50 text-xs underline underline-offset-2 mt-2">
-                          🃏 Can't do this one?
-                        </button>
-                      )}
-                    </div>
-                    <div className="shrink-0 text-2xl">
-                      {isUp ? <span className="text-sm font-bold text-zest tabular-nums">{Math.round(progress * 100)}%</span> : isDone ? '✅' : '⬜'}
-                    </div>
-                  </div>
-                  {isUp && (
-                    <div className="mt-3 h-1.5 rounded-full bg-cream/10 overflow-hidden">
-                      <div className="h-full bg-zest transition-all" style={{ width: `${Math.max(3, progress * 100)}%` }} />
-                    </div>
+                  className={`rounded-[20px] p-4 border-2 space-y-3 ${isDone ? 'bg-mint/[0.08] border-mint/50' : 'bg-cream/5 border-cream/15'}`}>
+                  <span className={`inline-block ${TYPE_COLOR[a.type]} text-ink font-body text-xs font-bold px-2 py-0.5 rounded-lg tracking-wide`}>
+                    {PHONE_TYPE_LABEL[a.type]}
+                  </span>
+                  <p className={`text-lg leading-snug font-medium ${isDone ? 'text-cream/75' : ''}`}>{a.description}</p>
+                  {a.target_user_name && (
+                    <span className="inline-flex items-center gap-1.5 bg-cream/[0.08] rounded-full px-3 py-1.5 text-[15px] text-cream/85">
+                      👋 Find <b className="text-zest">{a.target_user_name}</b>{a.target_hint && <> · {a.target_hint}</>}
+                    </span>
                   )}
-                  {isDone && <p className="text-mint/70 text-xs mt-2">Tap to view / replace</p>}
+                  {a.is_alcoholic && <p className="text-punch text-sm">🍺 alcoholic</p>}
+                  {a.substitute_description && (
+                    <p className="text-mint text-[15px]">🃏 Did instead: {a.substitute_description}</p>
+                  )}
+
+                  {isUp ? (
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-[15px]"><span>Uploading…</span>
+                        <span className="font-body font-bold text-zest tabular-nums">{Math.round(progress * 100)}%</span></div>
+                      <div className="h-2 rounded-full bg-cream/10 overflow-hidden">
+                        <div className="h-full bg-zest transition-all" style={{ width: `${Math.max(3, progress * 100)}%` }} />
+                      </div>
+                    </div>
+                  ) : isDone ? (
+                    <div className="flex items-center justify-between text-base">
+                      <span className="text-mint font-bold">✅ Done</span>
+                      <button onClick={() => setViewing(a)} className="underline underline-offset-4 text-cream/85 py-2">View / replace</button>
+                    </div>
+                  ) : (
+                    <>
+                      <button onClick={() => triggerUpload(a.id)} disabled={!!uploadingId} className="btn-cta">
+                        📷 Add photo or video
+                      </button>
+                      {data.wildcards.length > 0 && data.wildcards_left > 0 && (
+                        <button onClick={() => setWildFor(a)} className="btn-outline">🃏 Can't do it? Use a wildcard</button>
+                      )}
+                    </>
+                  )}
                 </div>
               )
             })}
           </div>
-          {err && <p className="text-punch text-center text-sm mt-4">{err}</p>}
+          {err && <p className="text-punch text-center text-base mt-4">{err}</p>}
           {data.wildcards.length > 0 && (
-            <p className="text-cream/50 text-xs text-center mt-4">🃏 Wildcards left: {data.wildcards_left}</p>
+            <p className="text-cream/75 text-[15px] text-center mt-4">🃏 Wildcards left: {data.wildcards_left}</p>
           )}
           <PhotoNotice settings={game.settings} className="mt-6" />
-          <p className="text-cream/40 text-xs text-center mt-4">
-            Tap a task to upload a photo or video as proof. Paired tasks close for both of you.
+          <p className="text-cream/70 text-[15px] text-center mt-4">
+            Paired tasks close for both of you when one uploads.
           </p>
         </>
       )}

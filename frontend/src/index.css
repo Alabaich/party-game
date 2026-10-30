@@ -54,6 +54,16 @@ body {
 .label {
   @apply text-cream/60 text-xs tracking-widest uppercase;
 }
+/* phone screens */
+.field-label { @apply block text-base font-bold text-cream mb-2; }
+.eyebrow { @apply font-body text-xs tracking-widest uppercase text-cream/70; }
+.btn-cta {
+  @apply w-full min-h-[52px] rounded-full bg-zest text-ink font-bold text-[17px] px-5 py-3 active:scale-[0.98] transition-transform disabled:opacity-60;
+  box-shadow: 0 0 0 4px rgb(var(--c-zest) / .15), 0 8px 24px rgb(var(--c-zest) / .35);
+}
+.btn-outline {
+  @apply w-full min-h-[46px] rounded-full border-[1.5px] border-cream/30 text-cream/90 text-[15px] px-4 py-2.5 active:scale-[0.98] transition-transform;
+}
 
 /* ── Jack-o'-lantern QR (lib/Pumpkin.jsx) ───────────────────────────────── */
 .pumpkin g { transform-box: fill-box; transform-origin: center; }

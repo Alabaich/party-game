@@ -8,6 +8,8 @@ export default {
       fontFamily: {
         display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
         body: ['"Space Mono"', 'monospace'],
+        // phone screens: readable body text; display + mono stay for accents
+        sans: ['"DM Sans"', 'system-ui', '-apple-system', '"Segoe UI"', 'sans-serif'],
       },
       // colours come from the active theme (see index.css: [data-theme=...])
       colors: {

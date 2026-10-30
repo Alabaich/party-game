@@ -98,7 +98,7 @@ class GameSettings(BaseModel):
 
 EMAIL_QUESTION = Question(
     id="email", kind="email", required=False, private=True,
-    text="Want your photos from tonight? Leave your email and we'll send them",
+    text="Email for your photos from tonight",
 )
 
 

@@ -72,37 +72,37 @@ export default function Join() {
 
 
   return (
-    <div className="relative z-10 min-h-screen flex flex-col items-center px-6 py-10 text-cream font-body">
+    <div className="relative z-10 min-h-screen flex flex-col items-center px-6 py-10 text-cream font-sans">
       <LogoRow logos={s.logos} className="mb-6" />
       <div className="animate-float text-6xl mb-2">{emoji}</div>
       <h1 className="font-display font-extrabold text-4xl text-zest text-center leading-tight mb-2">{game.name}</h1>
-      {s.welcome && <p className="text-cream/70 text-center max-w-sm mb-6 whitespace-pre-line">{s.welcome}</p>}
+      {s.welcome && <p className="text-cream/85 text-[17px] leading-relaxed text-center max-w-sm mb-6 whitespace-pre-line">{s.welcome}</p>}
 
       <div className="w-full max-w-sm space-y-5 mt-2">
         {step === 'consent' ? (
           <>
             <div className="card p-5 space-y-4">
-              <p className="label">Step 1 of 2</p>
+              <p className="eyebrow">Step 1 of 2</p>
               <p className="font-display font-bold text-xl">{s.consent.title}</p>
-              <p className="text-cream/80 text-sm leading-relaxed">{s.consent.summary}</p>
+              <p className="text-cream/90 text-base leading-relaxed">{s.consent.summary}</p>
               <button type="button" onClick={() => setShowDoc(true)}
-                className="text-zest underline underline-offset-4 text-sm">
+                className="text-zest underline underline-offset-4 text-base py-1">
                 📄 Read the full document
               </button>
               <label className="flex items-start gap-3 cursor-pointer select-none">
                 <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)}
-                  className="mt-1 w-5 h-5 accent-[rgb(var(--c-zest))] shrink-0" />
-                <span className="text-sm">{s.consent.checkbox_label}</span>
+                  className="mt-0.5 w-6 h-6 accent-[rgb(var(--c-zest))] shrink-0" />
+                <span className="text-base leading-snug">{s.consent.checkbox_label}</span>
               </label>
             </div>
             <button disabled={!agreed} onClick={() => { setStep('details'); setErr('') }}
-              className="btn-primary w-full text-lg">Continue</button>
+              className="btn-cta font-display text-lg">Continue</button>
           </>
         ) : (
           <form onSubmit={submit} className="space-y-4">
-            {s.consent.enabled && <p className="label">Step 2 of 2</p>}
+            {s.consent.enabled && <p className="eyebrow">Step 2 of 2</p>}
             <div>
-              <p className="label mb-2">Your name</p>
+              <p className="field-label">Your name</p>
               <input value={name} onChange={(e) => { setName(e.target.value); setErr('') }}
                 placeholder="First name" maxLength={40} className="field text-lg" />
             </div>
@@ -111,13 +111,13 @@ export default function Join() {
             ))}
             <PhotoNotice settings={s} />
             {err && <p className="text-punch text-center text-sm">{err}</p>}
-            <p className="text-cream/40 text-xs text-center">Changed phones later? Ask the host to send you your link.</p>
-            <button disabled={busy} className="btn-primary w-full text-lg">
+            <p className="text-cream/70 text-sm text-center">Changed phones later? Ask the host for your link.</p>
+            <button disabled={busy} className="btn-cta font-display text-lg">
               {busy ? 'Joining…' : `Join the game ${emoji}`}
             </button>
             {s.consent.enabled && (
               <button type="button" onClick={() => setStep('consent')}
-                className="w-full text-cream/40 text-xs underline underline-offset-4">Back</button>
+                className="w-full text-cream/70 text-base underline underline-offset-4 py-2">Back</button>
             )}
           </form>
         )}
@@ -126,7 +126,7 @@ export default function Join() {
 
         {s.prizes.some((p) => p.title) && (
           <div className="pt-4">
-            <p className="label mb-2 text-center">Prizes</p>
+            <p className="eyebrow mb-2 text-center">Prizes</p>
             <Prizes prizes={s.prizes} />
           </div>
         )}
@@ -151,7 +151,7 @@ export default function Join() {
 function QuestionField({ q, value, onChange }) {
   return (
     <div>
-      <p className="label mb-2">{q.text}{!q.required && ' (optional)'}</p>
+      <p className="field-label">{q.text}{!q.required && <span className="font-normal text-cream/70"> (optional)</span>}</p>
       {q.kind === 'choice' && (
         <select value={value ?? ''} onChange={(e) => onChange(e.target.value)} className="field text-lg">
           <option value="" disabled>Choose…</option>

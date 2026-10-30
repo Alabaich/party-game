@@ -1,5 +1,6 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 from .deps import get_db
 from .. import schemas
@@ -22,7 +23,9 @@ async def upload_proxy(user_id: str, assignment_id: int,
     if not a or a.user_id != user_id:
         raise HTTPException(404, "Assignment not found")
     data, content_type = await _read_media(file)
-    public_url = upload_file_to_r2(file.filename or "upload", content_type, data)
+    # boto3 is blocking: keep it off the event loop so other players aren't stalled
+    public_url = await run_in_threadpool(
+        upload_file_to_r2, file.filename or "upload", content_type, data)
     return schemas.PresignOut(upload_url="", public_url=public_url)
 
 
@@ -124,7 +127,9 @@ async def free_upload(user_id: str,
     if not user:
         raise HTTPException(404, "Player not found")
     data, content_type = await _read_media(file)
-    public_url = upload_file_to_r2(file.filename or "upload", content_type, data)
+    # boto3 is blocking: keep it off the event loop so other players aren't stalled
+    public_url = await run_in_threadpool(
+        upload_file_to_r2, file.filename or "upload", content_type, data)
     media_type = MediaType.video if (content_type or "").startswith("video") else MediaType.image
     db.add(FreeMedia(user_id=user_id, file_url=public_url, media_type=media_type))
     db.commit()

@@ -86,7 +86,7 @@ export default function AdminGames() {
 
       <div className="space-y-3">
         {games.map((g) => (
-          <Link key={g.id} to={`/admin/games/${g.id}`} className="card p-4 flex items-center gap-4 hover:border-zest/50 transition-colors">
+          <Link key={g.id} to={`/admin/games/${g.id}${g.is_draft ? "?tab=settings" : ""}`} className="card p-4 flex items-center gap-4 hover:border-zest/50 transition-colors">
             <span className="text-3xl">{THEME_EMOJI[g.settings.theme]}</span>
             <div className="flex-1 min-w-0">
               <p className="font-display font-bold text-lg truncate">{g.name}</p>

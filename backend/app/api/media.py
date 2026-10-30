@@ -6,6 +6,8 @@ from .. import schemas
 from ..models import (
     User, Task, Assignment, Media, FreeMedia, AssignmentStatus, MediaType,
 )
+from ..config import settings
+from ..services.text import render_task
 from ..services.storage import make_presigned_put, upload_file_to_r2
 
 router = APIRouter()
@@ -30,8 +32,7 @@ async def upload_proxy(user_id: str, assignment_id: int,
     a = db.get(Assignment, assignment_id)
     if not a or a.user_id != user_id:
         raise HTTPException(404, "Assignment not found")
-    data = await file.read()
-    content_type = file.content_type or "application/octet-stream"
+    data, content_type = await _read_media(file)
     public_url = upload_file_to_r2(file.filename or "upload", content_type, data)
     return schemas.PresignOut(upload_url="", public_url=public_url)
 
@@ -43,6 +44,8 @@ def complete_task(user_id: str, assignment_id: int,
     a = db.get(Assignment, assignment_id)
     if not a or a.user_id != user_id:
         raise HTTPException(404, "Assignment not found")
+    if not payload.files:
+        raise HTTPException(400, "Upload at least one photo or video")
 
     db.query(Media).filter(Media.assignment_id == assignment_id).delete()
     for f in payload.files:
@@ -50,8 +53,10 @@ def complete_task(user_id: str, assignment_id: int,
                      media_type=f.media_type))
 
     now = datetime.utcnow()
-    a.status = AssignmentStatus.completed
-    a.completed_at = now
+    # replacing proof of an already-completed task must not move the finish time
+    if a.status != AssignmentStatus.completed:
+        a.status = AssignmentStatus.completed
+        a.completed_at = now
     db.flush()
 
     _recalc_user_completion(db, user_id, now)
@@ -77,14 +82,25 @@ def complete_task(user_id: str, assignment_id: int,
     if a.target_user_id:
         tgt = db.get(User, a.target_user_id)
         target_name = tgt.name if tgt else None
-        if "{target}" in desc and target_name:
-            desc = desc.replace("{target}", target_name)
+    desc = render_task(desc, target_name)
     return schemas.AssignmentOut(
         id=a.id, task_id=a.task_id, description=desc, type=t.type,
         is_alcoholic=t.is_alcoholic, target_user_name=target_name,
         pair_id=a.pair_id, status=a.status, completed_at=a.completed_at,
         media=[schemas.MediaOut.model_validate(m) for m in a.media],
     )
+
+
+async def _read_media(file: UploadFile) -> tuple[bytes, str]:
+    """Only photos/videos, capped at MAX_UPLOAD_MB."""
+    content_type = file.content_type or "application/octet-stream"
+    if not content_type.startswith(("image/", "video/")):
+        raise HTTPException(400, "Only photos and videos are allowed")
+    limit = settings.MAX_UPLOAD_MB * 1024 * 1024
+    data = await file.read(limit + 1)
+    if len(data) > limit:
+        raise HTTPException(413, f"File is too large (max {settings.MAX_UPLOAD_MB} MB)")
+    return data, content_type
 
 
 def _recalc_user_completion(db: Session, user_id: str, now: datetime):
@@ -102,10 +118,18 @@ async def download_proxy(url: str):
     import httpx
     from fastapi.responses import StreamingResponse
     import urllib.parse
+    base = settings.R2_PUBLIC_BASE_URL.rstrip("/") + "/"
+    if not url.startswith(base):
+        raise HTTPException(400, "Only game media can be downloaded")
     path = urllib.parse.urlparse(url).path
-    filename = path.split("/")[-1] or "download"
+    filename = (path.split("/")[-1] or "download").replace('"', "")
     async with httpx.AsyncClient() as client:
-        r = await client.get(url)
+        try:
+            r = await client.get(url, timeout=60)
+        except httpx.HTTPError:
+            raise HTTPException(502, "Storage is unavailable")
+        if r.status_code != 200:
+            raise HTTPException(404, "File not found")
         content_type = r.headers.get("content-type", "application/octet-stream")
         return StreamingResponse(
             iter([r.content]),
@@ -122,8 +146,7 @@ async def free_upload(user_id: str,
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(404, "Player not found")
-    data = await file.read()
-    content_type = file.content_type or "application/octet-stream"
+    data, content_type = await _read_media(file)
     public_url = upload_file_to_r2(file.filename or "upload", content_type, data)
     media_type = MediaType.video if (content_type or "").startswith("video") else MediaType.image
     db.add(FreeMedia(user_id=user_id, file_url=public_url, media_type=media_type))

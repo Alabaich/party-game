@@ -1,5 +1,6 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from .deps import get_db
 from .. import schemas
@@ -13,7 +14,10 @@ router = APIRouter()
 def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
     now = datetime.utcnow()
 
-    existing = db.query(User).filter(User.name == payload.name.strip()).first()
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(400, "Enter your name")
+    existing = db.query(User).filter(func.lower(User.name) == name.lower()).first()
     if existing:
         raise HTTPException(400, "This name is already taken")
 
@@ -29,7 +33,7 @@ def register(payload: schemas.RegisterIn, db: Session = Depends(get_db)):
             is_latecomer = True
 
     user = User(
-        name=payload.name.strip(),
+        name=name,
         is_drinking=payload.is_drinking,
         joined_at=now,
         is_latecomer=is_latecomer,

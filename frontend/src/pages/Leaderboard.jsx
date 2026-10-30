@@ -1,9 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, withAdminPin } from '../lib/api'
 
 const PHOTO_MS = 10000
-const GAME_URL = 'https://party.enjob.ca'
+const GAME_URL = window.location.origin
 
 function fmtDuration(sec) {
   if (sec == null) return '—'
@@ -190,7 +190,7 @@ export default function Leaderboard() {
   async function onStart() {
     if (!confirm('Start the game? All players will be assigned tasks and the timer will begin.')) return
     setStarting(true); setErr('')
-    try { await api.startGame(); await load() }
+    try { await withAdminPin(api.startGame); await load() }
     catch (e) { setErr(e.message || 'Failed to start') }
     finally { setStarting(false) }
   }
@@ -198,7 +198,7 @@ export default function Leaderboard() {
   async function onReveal() {
     if (!confirm('Reveal places to all players? This cannot be undone.')) return
     setRevealing(true); setErr('')
-    try { await api.revealPlaces(); await load() }
+    try { await withAdminPin(api.revealPlaces); await load() }
     catch (e) { setErr(e.message || 'Failed to reveal') }
     finally { setRevealing(false) }
   }

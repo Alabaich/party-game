@@ -6,11 +6,12 @@ Account/Game objects are reachable and the shape can be validated.
 """
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from .deps import get_db
+from .deps import get_db, require_admin
 from .. import schemas
 from ..models import Account, Game
 
-router = APIRouter(prefix="/accounts", tags=["accounts"])
+router = APIRouter(prefix="/accounts", tags=["accounts"],
+                   dependencies=[Depends(require_admin)])
 
 
 @router.post("", response_model=schemas.AccountOut)

@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     R2_BUCKET: str
     R2_PUBLIC_BASE_URL: str
     CORS_ORIGINS: str = ""
+    # PIN for host actions (start game, reveal places, accounts). Empty = no check.
+    ADMIN_PIN: str = ""
+    MAX_UPLOAD_MB: int = 300
 
     @property
     def cors_list(self) -> list[str]:

@@ -12,14 +12,18 @@ async function jfetch(path, opts = {}) {
   return res.status === 204 ? null : res.json()
 }
 
+function adminHeaders(pin) {
+  return { 'Content-Type': 'application/json', 'X-Admin-Pin': pin || '' }
+}
+
 export const api = {
   register: (name, is_drinking) =>
     jfetch('/register', { method: 'POST', body: JSON.stringify({ name, is_drinking }) }),
   players: () => jfetch('/players'),
   dashboard: (uuid) => jfetch(`/u/${uuid}`),
   gameStatus: () => jfetch('/game'),
-  startGame: () => jfetch('/game/start', { method: 'POST' }),
-  revealPlaces: () => jfetch('/game/reveal', { method: 'POST' }),
+  startGame: (pin) => jfetch('/game/start', { method: 'POST', headers: adminHeaders(pin) }),
+  revealPlaces: (pin) => jfetch('/game/reveal', { method: 'POST', headers: adminHeaders(pin) }),
   leaderboard: () => jfetch('/leaderboard'),
   // gameId is optional: omit for legacy unscoped behavior (all media);
   // pass an id to restrict to one game's players.
@@ -73,6 +77,33 @@ export async function freeUpload(uuid, file) {
 // Leave as null (or '') to keep showing ALL media (current behavior).
 // After running the backfill script, set this to that game's id.
 export const BIRTHDAY_GAME_ID = null
+
+// Host PIN for start/reveal; remembered on the host's device only.
+export const adminPin = {
+  get: () => { try { return localStorage.getItem('admin_pin') || '' } catch { return '' } },
+  set: (v) => { try { localStorage.setItem('admin_pin', v) } catch { /* ignore */ } },
+  clear: () => { try { localStorage.removeItem('admin_pin') } catch { /* ignore */ } },
+}
+
+// Run a host action; ask for the PIN if missing or rejected.
+export async function withAdminPin(action) {
+  let pin = adminPin.get()
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (!pin) {
+      pin = window.prompt('Host PIN') || ''
+      if (!pin) throw new Error('PIN required')
+    }
+    try {
+      const res = await action(pin)
+      adminPin.set(pin)
+      return res
+    } catch (e) {
+      if (!String(e.message).includes('Wrong admin PIN')) throw e
+      adminPin.clear(); pin = ''
+    }
+  }
+  throw new Error('Wrong admin PIN')
+}
 
 export const store = {
   getUuid: () => localStorage.getItem('player_uuid'),

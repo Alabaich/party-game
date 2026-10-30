@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from .deps import get_db
 from .. import schemas
+from ..services.text import render_task
 from ..models import User, GameState, Task, Assignment
 
 router = APIRouter()
@@ -31,8 +32,7 @@ def dashboard(user_id: str, db: Session = Depends(get_db)):
             if a.target_user_id:
                 tgt = db.get(User, a.target_user_id)
                 target_name = tgt.name if tgt else None
-                if "{target}" in desc and target_name:
-                    desc = desc.replace("{target}", target_name)
+            desc = render_task(desc, target_name)
             assignments_out.append(schemas.AssignmentOut(
                 id=a.id, task_id=a.task_id, description=desc,
                 type=t.type, is_alcoholic=t.is_alcoholic,

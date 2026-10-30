@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from .deps import get_db
 from .. import schemas
+from ..services.text import render_task
 from ..models import User, Task, Assignment, FreeMedia, AssignmentStatus
 
 router = APIRouter()
@@ -37,11 +38,8 @@ def slideshow(
             continue
         u = db.get(User, a.user_id)
         t = db.get(Task, a.task_id)
-        desc = t.description
-        if a.target_user_id and "{target}" in desc:
-            tgt = db.get(User, a.target_user_id)
-            if tgt:
-                desc = desc.replace("{target}", tgt.name)
+        tgt = db.get(User, a.target_user_id) if a.target_user_id else None
+        desc = render_task(t.description, tgt.name if tgt else None)
         for m in a.media:
             out.append(schemas.SlideItem(
                 id=f"assignment-{a.id}-{m.id}",

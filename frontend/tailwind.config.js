@@ -1,4 +1,6 @@
 /** @type {import('tailwindcss').Config} */
+const v = (name) => `rgb(var(--c-${name}) / <alpha-value>)`
+
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
   theme: {
@@ -7,12 +9,13 @@ export default {
         display: ['"Bricolage Grotesque"', 'system-ui', 'sans-serif'],
         body: ['"Space Mono"', 'monospace'],
       },
+      // colours come from the active theme (see index.css: [data-theme=...])
       colors: {
-        ink: '#1a1410',
-        cream: '#f4ead5',
-        punch: '#ff3d5a',
-        zest: '#ffc93c',
-        mint: '#2ec4b6',
+        ink: v('ink'),
+        cream: v('cream'),
+        punch: v('punch'),
+        zest: v('zest'),
+        mint: v('mint'),
       },
     },
   },

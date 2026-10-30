@@ -1,30 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link } from 'react-router-dom'
-import { api, withAdminPin } from '../lib/api'
+import { Link, useParams } from 'react-router-dom'
+import { api } from '../lib/api'
+import { useTheme, QRCode, joinUrl, fmtDuration, Prizes, THEME_EMOJI } from '../lib/ui'
 
 const PHOTO_MS = 10000
-const GAME_URL = window.location.origin
-
-function fmtDuration(sec) {
-  if (sec == null) return '—'
-  const h = Math.floor(sec / 3600)
-  const m = Math.floor((sec % 3600) / 60)
-  const s = sec % 60
-  const pad = (n) => String(n).padStart(2, '0')
-  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`
-}
-
-function QRCode({ size = 220 }) {
-  return (
-    <img
-      src={`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(GAME_URL)}&bgcolor=ffffff&color=000000&margin=10`}
-      width={size}
-      height={size}
-      className="rounded-2xl"
-    />
-  )
-}
-
 // ─── Slideshow hook ────────────────────────────────────────────────────────
 
 function useSlideshow(slides) {
@@ -164,22 +143,22 @@ function SlideMedia({ slide, onEnded }) {
 
 // ─── Main ──────────────────────────────────────────────────────────────────
 
-export default function Leaderboard() {
+export default function Screen() {
+  const { code: rawCode } = useParams()
+  const code = rawCode.toUpperCase()
   const [items, setItems] = useState([])
   const [game, setGame] = useState(null)
   const [slides, setSlides] = useState([])
-  const [starting, setStarting] = useState(false)
-  const [revealing, setRevealing] = useState(false)
-  const [err, setErr] = useState('')
+  useTheme(game?.settings.theme)
 
   const { idx, currentNotif, advanceSlide, advanceNotif, queueLength } = useSlideshow(slides)
 
   const load = useCallback(async () => {
     try {
-      const [lb, gs, sl] = await Promise.all([api.leaderboard(), api.gameStatus(), api.slideshow()])
+      const [lb, gs, sl] = await Promise.all([api.leaderboard(code), api.game(code), api.slideshow(code)])
       setItems(lb); setGame(gs); setSlides(sl)
     } catch { /* ignore */ }
-  }, [])
+  }, [code])
 
   useEffect(() => {
     load()
@@ -187,24 +166,11 @@ export default function Leaderboard() {
     return () => clearInterval(id)
   }, [load])
 
-  async function onStart() {
-    if (!confirm('Start the game? All players will be assigned tasks and the timer will begin.')) return
-    setStarting(true); setErr('')
-    try { await withAdminPin(api.startGame); await load() }
-    catch (e) { setErr(e.message || 'Failed to start') }
-    finally { setStarting(false) }
-  }
-
-  async function onReveal() {
-    if (!confirm('Reveal places to all players? This cannot be undone.')) return
-    setRevealing(true); setErr('')
-    try { await withAdminPin(api.revealPlaces); await load() }
-    catch (e) { setErr(e.message || 'Failed to reveal') }
-    finally { setRevealing(false) }
-  }
-
   const revealed = game?.places_revealed
-  const totalTasks = items.length ? Math.max(...items.map(i => i.completed_count), 7) : 7
+  const url = joinUrl(code)
+  const n = game?.tasks_per_user || 7
+  const emoji = THEME_EMOJI[game?.settings.theme] || '🎉'
+  const prizes = game?.settings.prizes || []
   const finished = items.filter(i => i.finished)
   const inProgress = items.filter(i => !i.finished)
   const currentSlide = slides.length ? slides[idx % slides.length] : null
@@ -217,26 +183,26 @@ export default function Leaderboard() {
       <div className="relative z-10 min-h-screen text-cream font-body flex flex-col lg:flex-row">
         <div className="lg:w-1/2 flex flex-col items-center justify-center px-10 py-12 border-r border-cream/10">
           <p className="text-mint tracking-widest text-sm mb-2">SCAN TO JOIN</p>
-          <h1 className="font-display font-extrabold text-5xl text-zest text-center mb-6">PARTY<br/>QUEST</h1>
+          <h1 className="font-display font-extrabold text-5xl text-zest text-center mb-6">{emoji} {game.name}</h1>
           <div className="bg-white p-3 rounded-2xl mb-4 shadow-2xl">
-            <QRCode url={GAME_URL} size={220} />
+            <QRCode value={url} size={260} />
           </div>
-          <p className="text-cream/50 text-sm mb-8">{GAME_URL}</p>
+          <p className="text-cream/60 text-lg mb-1">{url.replace(/^https?:\/\//, '')}</p>
+          <p className="text-cream/40 text-sm mb-8">code <span className="text-zest font-bold tracking-widest">{code}</span></p>
           <div className="w-full max-w-xs text-center">
-            <p className="text-cream/80 mb-2">Players joined: <span className="text-zest font-bold text-xl">{game.player_count}</span></p>
-            <button onClick={onStart} disabled={starting || game.player_count === 0}
-              className="w-full bg-punch text-cream font-display font-extrabold text-2xl py-4 rounded-2xl active:scale-95 transition-transform disabled:opacity-50 mt-4">
-              {starting ? 'STARTING…' : '🚀 START GAME'}
-            </button>
-            {err && <p className="text-punch text-sm mt-3">{err}</p>}
+            <p className="text-cream/80 mb-2">Players joined: <span className="text-zest font-bold text-3xl">{game.player_count}</span></p>
+            <p className="text-cream/40 text-sm">The game starts soon…</p>
           </div>
         </div>
         <div className="lg:w-1/2 flex flex-col justify-center px-10 py-12">
           <p className="text-mint tracking-widest text-sm mb-4">HOW TO PLAY</p>
           <div className="space-y-5">
-            <Rule emoji="🎯" title="Complete 7 tasks">Each player gets 7 unique challenges — solo, targeted at another player, or paired with a partner.</Rule>
+            {prizes.some((p) => p.title) && (
+              <div className="mb-2"><p className="font-display font-bold text-cream mb-2">🏆 Prizes for the fastest</p><Prizes prizes={prizes} /></div>
+            )}
+            <Rule emoji="🎯" title={`Complete ${n} tasks`}>Each player gets {n} challenges — solo, finding another player, or paired with a partner. A great way to meet your neighbours!</Rule>
             <Rule emoji="📸" title="Upload proof">Every completed task needs photo or video evidence. Tap the task to upload.</Rule>
-            <Rule emoji="⚡" title="Fastest wins">The timer starts when the game begins. Finish all 7 tasks as fast as possible.</Rule>
+            <Rule emoji="⚡" title="Fastest wins">The timer starts when the game begins. Finish all {n} tasks as fast as possible.</Rule>
             <Rule emoji="🤝" title="Paired tasks">When one partner uploads proof — the task closes for both automatically.</Rule>
             <Rule emoji="🙈" title="Want to skip a task?">Take a <span className="text-zest font-bold">unique group photo</span> with several people all looking at the camera and upload it as proof. Each skip needs its own new group photo — no reusing!</Rule>
             <Rule emoji="📱" title="Just want to share?">Use the <span className="text-zest font-bold">📸 Just Upload</span> button to post any photo or video to the big screen without completing a task.</Rule>
@@ -253,21 +219,17 @@ export default function Leaderboard() {
       {/* Left: leaderboard */}
       <div className="w-1/2 flex-shrink-0 h-screen overflow-y-auto px-5 py-6 border-r border-cream/10 bg-ink">
         <header className="flex items-center justify-between mb-4">
-          <h1 className="font-display font-extrabold text-2xl text-zest">🏆 Leaderboard</h1>
-          <Link to="/slideshow" className="bg-cream/10 px-3 py-2 rounded-xl text-xs">📺 Full</Link>
+          <h1 className="font-display font-extrabold text-2xl text-zest">🏆 {game?.name || 'Leaderboard'}</h1>
+          <Link to={`/g/${code}/slideshow`} className="bg-cream/10 px-3 py-2 rounded-xl text-xs">📺 Full</Link>
         </header>
 
-        <p className="text-mint text-center text-xs mb-4 tracking-widest">GAME IN PROGRESS ▶</p>
-
-        {/* Reveal — subtle */}
-        {!revealed && (
-          <div className="mb-4 text-center">
-            <button onClick={onReveal} disabled={revealing}
-              className="text-cream/30 text-xs underline underline-offset-2 hover:text-cream/60 transition-colors disabled:opacity-50">
-              {revealing ? 'revealing…' : 'reveal places'}
-            </button>
+        <div className="flex items-center gap-3 mb-4 card p-3">
+          <div className="bg-white p-1.5 rounded-lg shrink-0"><QRCode value={url} size={72} /></div>
+          <div className="text-xs">
+            <p className="text-mint tracking-widest">GAME IN PROGRESS ▶</p>
+            <p className="text-cream/60 mt-1">Late? Scan to join · code <span className="text-zest font-bold">{code}</span></p>
           </div>
-        )}
+        </div>
 
         {revealed && (
           <div className="mb-4 bg-mint/10 border border-mint/30 rounded-xl px-3 py-2 text-center">
@@ -299,7 +261,7 @@ export default function Leaderboard() {
               {inProgress.map((it) => (
                 <div key={it.user_id} className="bg-cream/5 border border-cream/15 rounded-xl p-2 text-center">
                   <p className="font-bold text-xs leading-tight truncate mb-0.5">{it.name}</p>
-                  <p className="text-zest font-bold text-xs tabular-nums">{it.completed_count}/{totalTasks}</p>
+                  <p className="text-zest font-bold text-xs tabular-nums">{it.completed_count}/{it.total || n}</p>
                 </div>
               ))}
             </div>

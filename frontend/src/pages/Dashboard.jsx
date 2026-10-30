@@ -1,18 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, uploadAndComplete, freeUpload, store } from '../lib/api'
-
-const TYPE_LABEL = { 1: 'SOLO', 2: 'TARGET', 3: 'PAIR' }
-const TYPE_COLOR = { 1: 'bg-mint', 2: 'bg-zest', 3: 'bg-punch' }
-
-function fmtDuration(sec) {
-  if (sec == null) return '—'
-  const h = Math.floor(sec / 3600)
-  const m = Math.floor((sec % 3600) / 60)
-  const s = sec % 60
-  const pad = (n) => String(n).padStart(2, '0')
-  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`
-}
+import {
+  useTheme, fmtDuration, Center, Prizes, TYPE_LABEL, TYPE_COLOR, THEME_EMOJI,
+} from '../lib/ui'
 
 export default function Dashboard() {
   const { uuid } = useParams()
@@ -30,14 +21,14 @@ export default function Dashboard() {
   const load = useCallback(async () => {
     try {
       const d = await api.dashboard(uuid)
-      store.setUuid(uuid)
+      store.setPlayer(d.game.code, uuid)
       setData(d)
 
       const allDone = d.assignments.length > 0 &&
         d.assignments.every((a) => a.status === 'completed')
       if (allDone) {
         try {
-          const lb = await api.leaderboard()
+          const lb = await api.leaderboard(d.game.code)
           const finishedList = lb.filter((i) => i.finished)
           const myIndex = finishedList.findIndex((i) => i.user_id === uuid)
           const me = lb.find((i) => i.user_id === uuid)
@@ -45,14 +36,14 @@ export default function Dashboard() {
             setWinInfo({
               place: myIndex + 1,
               duration_seconds: me.duration_seconds,
-              revealed: d.places_revealed,
+              revealed: d.game.places_revealed,
             })
           }
         } catch { /* ignore */ }
       }
     } catch (e) {
-      if (e.message.includes('404') || e.message.includes('not found')) {
-        store.clear()
+      if (e.status === 404) {
+        try { localStorage.removeItem('last_player') } catch { /* ignore */ }
         nav('/')
       } else {
         setErr(e.message)
@@ -66,10 +57,14 @@ export default function Dashboard() {
     return () => clearInterval(id)
   }, [load])
 
-  if (err) return <Center>{err}</Center>
+  useTheme(data?.game.settings.theme)
+
+  if (err && !data) return <Center>{err}</Center>
   if (!data) return <Center>Loading…</Center>
 
-  const started = data.game_started
+  const game = data.game
+  const prizes = game.settings.prizes
+  const started = game.started || data.user.is_latecomer
   const done = data.assignments.filter((a) => a.status === 'completed').length
   const allDone = data.assignments.length > 0 && done === data.assignments.length
 
@@ -141,8 +136,14 @@ export default function Dashboard() {
             <p className="text-cream/50 text-xs tracking-widest mb-1">YOUR PLACE</p>
             {revealed
               ? <p className="font-display font-extrabold text-4xl text-zest">{placeLabel}</p>
-              : <p className="font-display font-extrabold text-4xl text-cream/30">waiting for reveal…</p>
+              : <p className="font-display font-extrabold text-2xl text-cream/30">waiting for reveal…</p>
             }
+            {revealed && prizes.find((p) => p.place === String(winInfo.place) && p.title) && (
+              <p className="text-mint font-bold mt-2">
+                🎁 {prizes.find((p) => p.place === String(winInfo.place)).title}
+                <span className="block text-cream/50 text-xs font-normal mt-1">Show this screen to the organizers</span>
+              </p>
+            )}
           </div>
         </div>
 
@@ -156,9 +157,9 @@ export default function Dashboard() {
           {freeUploading ? '⏳ Uploading…' : '📸 Just Upload'}
         </button>
 
-        <Link to="/leaderboard"
+        <Link to={`/g/${game.code}/gallery`}
           className="bg-zest text-ink font-display font-bold text-lg px-8 py-4 rounded-2xl active:scale-95 transition-transform">
-          🏆 See Leaderboard
+          📸 See all photos
         </Link>
       </div>
     )
@@ -173,7 +174,7 @@ export default function Dashboard() {
 
       <header className="flex items-center justify-between mb-6">
         <div>
-          <p className="text-cream/50 text-xs tracking-widest">PLAYER</p>
+          <p className="text-cream/50 text-xs tracking-widest">{THEME_EMOJI[game.settings.theme]} {game.name.toUpperCase()}</p>
           <h1 className="font-display font-extrabold text-2xl text-zest">{data.user.name}</h1>
         </div>
         <div className="flex gap-2 text-xs">
@@ -191,6 +192,12 @@ export default function Dashboard() {
           <div className="animate-float text-5xl mb-4">⏳</div>
           <p className="font-display font-extrabold text-3xl text-zest mb-2">Waiting to start</p>
           <p className="text-cream/50 text-sm mb-8">The game will begin when the host gives the go</p>
+          {prizes.some((p) => p.title) && (
+            <div className="text-left mb-8">
+              <p className="text-mint tracking-widest text-xs mb-3">PRIZES — FASTEST TO FINISH ALL TASKS</p>
+              <Prizes prizes={prizes} />
+            </div>
+          )}
 
           <div className="text-left">
             <p className="text-mint tracking-widest text-xs mb-3">PLAYERS ({data.players.length})</p>
@@ -233,6 +240,12 @@ export default function Dashboard() {
                       <p className={`leading-snug ${isDone ? 'line-through text-cream/50' : ''}`}>
                         {a.description}
                       </p>
+                      {a.target_user_name && (
+                        <p className="text-cream/50 text-xs mt-1">
+                          👋 Look for <span className="text-zest">{a.target_user_name}</span>
+                          {a.target_hint && <> · {a.target_hint}</>}
+                        </p>
+                      )}
                       {a.is_alcoholic && <span className="text-punch text-xs">🍺 alcoholic</span>}
                     </div>
                     <div className="shrink-0 text-2xl">
@@ -245,6 +258,9 @@ export default function Dashboard() {
             })}
           </div>
           {err && <p className="text-punch text-center text-sm mt-4">{err}</p>}
+          <p className="text-cream/40 text-xs text-center mt-6">
+            Tap a task to upload a photo or video as proof. Paired tasks close for both of you.
+          </p>
         </>
       )}
 
@@ -272,14 +288,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function Center({ children }) {
-  return (
-    <div className="relative z-10 min-h-screen flex items-center justify-center text-cream/70 font-body px-6 text-center">
-      {children}
     </div>
   )
 }

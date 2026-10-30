@@ -2,14 +2,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Theme palettes as "R G B" so Tailwind opacity modifiers (text-cream/50) work.
+   ink = background, cream = text, zest = primary accent, mint = success/secondary,
+   punch = danger/hot accent. */
+:root, [data-theme="party"] {
+  --c-ink: 26 20 16; --c-cream: 244 234 213; --c-punch: 255 61 90;
+  --c-zest: 255 201 60; --c-mint: 46 196 182;
+}
+[data-theme="halloween"] {
+  --c-ink: 18 11 24; --c-cream: 246 236 222; --c-punch: 177 76 255;
+  --c-zest: 255 138 31; --c-mint: 155 229 100;
+}
+[data-theme="diwali"] {
+  --c-ink: 30 12 22; --c-cream: 255 241 214; --c-punch: 230 57 70;
+  --c-zest: 255 183 3; --c-mint: 255 95 162;
+}
+
 :root { color-scheme: dark; }
 * { -webkit-tap-highlight-color: transparent; }
 body {
   margin: 0;
-  background: #1a1410;
+  background: rgb(var(--c-ink));
   background-image:
-    radial-gradient(circle at 15% 20%, rgba(255,201,60,0.10), transparent 40%),
-    radial-gradient(circle at 85% 75%, rgba(255,61,90,0.12), transparent 45%);
+    radial-gradient(circle at 15% 20%, rgb(var(--c-zest) / 0.10), transparent 40%),
+    radial-gradient(circle at 85% 75%, rgb(var(--c-punch) / 0.12), transparent 45%);
   min-height: 100vh;
 }
 .grain::before {
@@ -21,3 +37,20 @@ body {
 .animate-pop { animation: pop .35s cubic-bezier(.34,1.56,.64,1) both; }
 @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
 .animate-float { animation: float 3s ease-in-out infinite; }
+
+/* shared form controls */
+.field {
+  @apply w-full bg-ink border-2 border-cream/25 focus:border-zest rounded-2xl px-4 py-3 outline-none transition-colors placeholder:text-cream/35 text-cream;
+}
+.btn-primary {
+  @apply bg-zest text-ink font-display font-bold rounded-2xl px-5 py-3 active:scale-95 transition-transform disabled:opacity-50;
+}
+.btn-ghost {
+  @apply bg-cream/10 text-cream rounded-2xl px-4 py-3 active:scale-95 transition-transform disabled:opacity-50;
+}
+.card {
+  @apply bg-cream/5 border-2 border-cream/15 rounded-2xl;
+}
+.label {
+  @apply text-cream/60 text-xs tracking-widest uppercase;
+}

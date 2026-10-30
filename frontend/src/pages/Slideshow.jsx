@@ -1,22 +1,29 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useParams } from 'react-router-dom'
 import { api } from '../lib/api'
+import { useTheme } from '../lib/ui'
 
 const PHOTO_MS = 10000
 
 export default function Slideshow() {
+  const { code: rawCode } = useParams()
+  const code = rawCode.toUpperCase()
   const [slides, setSlides] = useState([])
   const [idx, setIdx] = useState(0)
   const videoRef = useRef(null)
   const timerRef = useRef(null)
   const slidesRef = useRef([])
+  const [theme, setTheme] = useState(null)
+  useTheme(theme)
 
   const load = useCallback(async () => {
     try {
-      const items = await api.slideshow()
+      const [g, items] = await Promise.all([api.game(code), api.slideshow(code)])
+      setTheme(g.settings.theme)
       slidesRef.current = items
       setSlides(items)
     } catch { /* ignore */ }
-  }, [])
+  }, [code])
 
   useEffect(() => {
     load()

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { Link } from 'react-router-dom'
-import { api, BIRTHDAY_GAME_ID } from '../lib/api'
+import { Link, useParams } from 'react-router-dom'
+import { api, downloadUrl } from '../lib/api'
+import { useTheme } from '../lib/ui'
 
 function fmtDur(sec) {
   if (sec == null) return ''
@@ -66,8 +67,7 @@ function FullscreenView({ slide, onClose }) {
   }, [onClose])
 
   async function handleDownload() {
-    const API = import.meta.env.VITE_API_BASE || '/api'
-    const proxyUrl = `${API}/download?url=${encodeURIComponent(slide.file_url)}`
+    const proxyUrl = downloadUrl(slide.file_url)
     const a = document.createElement('a')
     a.href = proxyUrl
     const ext = slide.media_type === 'video' ? 'mp4' : 'jpg'
@@ -137,27 +137,29 @@ function FullscreenView({ slide, onClose }) {
 }
 
 export default function Gallery() {
+  const { code: rawCode } = useParams()
+  const code = rawCode.toUpperCase()
+  const [game, setGame] = useState(null)
   const [slides, setSlides] = useState([])
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
     try {
-      // Pinned to the original birthday game when BIRTHDAY_GAME_ID is set;
-      // otherwise shows all media (legacy behavior).
-      const items = await api.slideshow(BIRTHDAY_GAME_ID)
-      setSlides(items)
+      const [g, items] = await Promise.all([api.game(code), api.slideshow(code)])
+      setGame(g); setSlides(items)
     } catch { /* ignore */ }
     finally { setLoading(false) }
-  }, [])
+  }, [code])
+  useTheme(game?.settings.theme)
 
   useEffect(() => { load() }, [load])
 
   return (
     <div className="relative z-10 min-h-screen text-cream font-body px-4 py-6 max-w-4xl mx-auto">
       <header className="flex items-center justify-between mb-6">
-        <h1 className="font-display font-extrabold text-3xl text-zest">📷 Gallery</h1>
-        <Link to="/leaderboard" className="bg-cream/10 px-3 py-2 rounded-xl text-xs">🏆 Leaderboard</Link>
+        <h1 className="font-display font-extrabold text-3xl text-zest">📷 {game?.name || 'Gallery'}</h1>
+        <Link to={`/g/${code}/screen`} className="bg-cream/10 px-3 py-2 rounded-xl text-xs">🏆 Leaderboard</Link>
       </header>
 
       {loading && <p className="text-cream/40 text-center py-20">Loading…</p>}

@@ -54,3 +54,31 @@ body {
 .label {
   @apply text-cream/60 text-xs tracking-widest uppercase;
 }
+
+/* ── Jack-o'-lantern QR (lib/Pumpkin.jsx) ───────────────────────────────── */
+.pumpkin g { transform-box: fill-box; transform-origin: center; }
+.pumpkin .pk-qr { transition: opacity .35s ease, transform .45s ease; }
+.pumpkin .pk-face { opacity: 0; transition: opacity .3s ease; }
+.pumpkin .pk-eyes { transform: scale(.2); transition: transform .45s cubic-bezier(.34,1.7,.64,1) .1s; }
+.pumpkin .pk-mouth { transform-origin: 50% 0%; transform: scaleY(.08); transition: transform .55s cubic-bezier(.34,1.6,.64,1) .3s; }
+.pumpkin .pk-name { opacity: 0; transform: translateY(40px) scale(.2);
+  transition: opacity .3s ease .65s, transform .6s cubic-bezier(.34,1.56,.64,1) .65s; }
+
+.pumpkin.is-face .pk-qr { opacity: 0; transform: scale(.75) rotate(-6deg); }
+.pumpkin.is-face .pk-face { opacity: 1; }
+.pumpkin.is-face .pk-eyes { transform: scale(1); }
+.pumpkin.is-face .pk-mouth { transform: scaleY(1); }
+.pumpkin.is-face .pk-name { opacity: 1; transform: translateY(0) scale(1); }
+.pumpkin.is-face .pk-wobble { animation: pk-shake .5s ease-in-out .3s 3; }
+.pumpkin.is-face .pk-pupil { animation: pk-flicker .35s steps(2) infinite; }
+.pumpkin .pk-wobble { animation: pk-breathe 4s ease-in-out infinite; }
+
+@keyframes pk-flicker { 0% { opacity: 1 } 50% { opacity: .35 } 100% { opacity: 1 } }
+@keyframes pk-breathe { 0%,100% { transform: scale(1) } 50% { transform: scale(1.015) } }
+@keyframes pk-shake {
+  0%,100% { transform: rotate(0) scale(1.02) } 25% { transform: rotate(-2.5deg) scale(1.04) }
+  75% { transform: rotate(2.5deg) scale(1.04) }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pumpkin *, .pumpkin { animation: none !important; transition-duration: .01s !important; }
+}

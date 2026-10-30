@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { useTheme, QRCode, joinUrl, fmtDuration, Prizes, THEME_EMOJI, playVideo } from '../lib/ui'
+import Pumpkin from '../lib/Pumpkin'
 
 const PHOTO_MS = 10000
 // ─── Slideshow hook ────────────────────────────────────────────────────────
@@ -105,6 +106,50 @@ function useSlideshow(slides) {
   }
 }
 
+// ─── New-player announcements ──────────────────────────────────────────────
+// Polls the player list and plays each newcomer's name once, one at a time.
+const ANNOUNCE_MS = 3600
+const GAP_MS = 700
+
+function useJoinAnnouncer(code) {
+  const [current, setCurrent] = useState(null)
+  const seen = useRef(null)
+  const queue = useRef([])
+  const busy = useRef(false)
+
+  const next = useCallback(() => {
+    if (busy.current || !queue.current.length) return
+    busy.current = true
+    setCurrent(queue.current.shift())
+    setTimeout(() => {
+      setCurrent(null)
+      setTimeout(() => { busy.current = false; next() }, GAP_MS)
+    }, ANNOUNCE_MS)
+  }, [])
+
+  useEffect(() => {
+    let alive = true
+    const poll = async () => {
+      try {
+        const players = await api.players(code)
+        if (!alive) return
+        if (seen.current === null) {
+          seen.current = new Set(players.map((p) => p.key))   // don't announce people already here
+          return
+        }
+        const fresh = players.filter((p) => !seen.current.has(p.key))
+        fresh.forEach((p) => seen.current.add(p.key))
+        if (fresh.length) { queue.current.push(...fresh.map((p) => p.name)); next() }
+      } catch { /* ignore */ }
+    }
+    poll()
+    const t = setInterval(poll, 3000)
+    return () => { alive = false; clearInterval(t) }
+  }, [code, next])
+
+  return current
+}
+
 // ─── Slide media ───────────────────────────────────────────────────────────
 
 function SlideMedia({ slide, onEnded }) {
@@ -164,6 +209,7 @@ export default function Screen() {
   useTheme(game?.settings.theme)
 
   const { idx, currentNotif, advanceSlide, advanceNotif, queueLength } = useSlideshow(slides)
+  const joined = useJoinAnnouncer(code)
 
   const load = useCallback(async () => {
     try {
@@ -190,22 +236,30 @@ export default function Screen() {
   const currentSlide = slides.length ? slides[idx % slides.length] : null
   const displaySlide = currentNotif || currentSlide
   const isNotif = !!currentNotif
+  const spooky = game?.settings.theme === 'halloween'
 
   // ── PRE-GAME SCREEN ──────────────────────────────────────────────────────
   if (game && !game.started) {
     return (
       <div className="relative z-10 min-h-screen text-cream font-body flex flex-col lg:flex-row">
         <div className="lg:w-1/2 flex flex-col items-center justify-center px-10 py-12 border-r border-cream/10">
+          <h1 className="font-display font-extrabold text-4xl xl:text-5xl text-zest text-center mb-2">{emoji} {game.name}</h1>
           <p className="text-mint tracking-widest text-sm mb-2">SCAN TO JOIN</p>
-          <h1 className="font-display font-extrabold text-5xl text-zest text-center mb-6">{emoji} {game.name}</h1>
-          <div className="bg-white p-3 rounded-2xl mb-4 shadow-2xl">
-            <QRCode value={url} size={260} />
-          </div>
-          <p className="text-cream/60 text-lg mb-1">{url.replace(/^https?:\/\//, '')}</p>
-          <p className="text-cream/40 text-sm mb-8">code <span className="text-zest font-bold tracking-widest">{code}</span></p>
-          <div className="w-full max-w-xs text-center">
-            <p className="text-cream/80 mb-2">Players joined: <span className="text-zest font-bold text-3xl">{game.player_count}</span></p>
-            <p className="text-cream/40 text-sm">{game.is_draft ? 'Registration opens soon…' : 'The game starts soon…'}</p>
+          {spooky ? (
+            <Pumpkin value={url} announce={joined} className="w-full max-w-[34rem] h-[56vh]" />
+          ) : (
+            <>
+              <div className="bg-white p-3 rounded-2xl mb-2 shadow-2xl"><QRCode value={url} size={260} /></div>
+              <p className={`h-8 font-display font-bold text-xl text-zest transition-opacity ${joined ? 'opacity-100 animate-pop' : 'opacity-0'}`}>
+                {joined && `👋 ${joined} just joined!`}
+              </p>
+            </>
+          )}
+          <p className="text-cream/60 text-lg mt-2">{url.replace(/^https?:\/\//, '')} · code <span className="text-zest font-bold tracking-widest">{code}</span></p>
+          <div className="text-center mt-4">
+            <p className="font-display font-extrabold text-7xl text-zest leading-none tabular-nums">{game.player_count}</p>
+            <p className="text-cream/70 tracking-widest text-sm mt-1">{game.player_count === 1 ? 'NEIGHBOUR' : 'NEIGHBOURS'} JOINED</p>
+            <p className="text-cream/40 text-sm mt-2">{game.is_draft ? 'Registration opens soon…' : 'The game starts soon…'}</p>
           </div>
         </div>
         <div className="lg:w-1/2 flex flex-col justify-center px-10 py-12">
@@ -237,11 +291,15 @@ export default function Screen() {
           <Link to={`/g/${code}/slideshow`} className="bg-cream/10 px-3 py-2 rounded-xl text-xs">📺 Full</Link>
         </header>
 
-        <div className="flex items-center gap-3 mb-4 card p-3">
-          <div className="bg-white p-1.5 rounded-lg shrink-0"><QRCode value={url} size={72} /></div>
-          <div className="text-xs">
-            <p className="text-mint tracking-widest">GAME IN PROGRESS ▶</p>
-            <p className="text-cream/60 mt-1">Late? Scan to join · code <span className="text-zest font-bold">{code}</span></p>
+        <div className="flex items-center gap-4 mb-4 card p-3">
+          {spooky
+            ? <Pumpkin value={url} announce={joined} className="w-72 h-72 shrink-0" />
+            : <div className="bg-white p-2 rounded-xl shrink-0"><QRCode value={url} size={150} /></div>}
+          <div>
+            <p className="text-mint tracking-widest text-xs">GAME IN PROGRESS ▶</p>
+            <p className="font-display font-extrabold text-3xl mt-1">Late?<br />Scan to join!</p>
+            <p className="text-cream/60 text-sm mt-1">code <span className="text-zest font-bold tracking-widest">{code}</span> · {game?.player_count} players</p>
+            {!spooky && joined && <p className="text-zest font-bold mt-2 animate-pop">👋 {joined} just joined!</p>}
           </div>
         </div>
 

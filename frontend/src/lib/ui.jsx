@@ -93,14 +93,18 @@ export function PhotoNotice({ settings, className = '' }) {
   )
 }
 
-// Browsers block autoplay with sound until someone has clicked the page.
-// Try with sound, fall back to muted so the slideshow never gets stuck.
-export function playVideo(video, onMuted) {
-  if (!video) return
-  video.muted = false
+// Browsers allow muted autoplay always, but sound only after someone has
+// clicked the page. Start muted until then; skip videos that never start
+// (e.g. a codec this browser can't decode). Returns a cleanup function.
+export function playVideo(video, { onMuted, onStuck } = {}) {
+  if (!video) return () => {}
+  const canSound = navigator.userActivation ? navigator.userActivation.hasBeenActive : false
+  video.muted = !canSound
+  if (video.muted) onMuted?.()
   video.play().catch(() => {
-    video.muted = true
-    onMuted?.()
+    if (!video.muted) { video.muted = true; onMuted?.() }
     video.play().catch(() => {})
   })
+  const t = setTimeout(() => { if (video.currentTime < 0.2) onStuck?.() }, 8000)
+  return () => clearTimeout(t)
 }

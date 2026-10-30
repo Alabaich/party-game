@@ -112,8 +112,15 @@ function SlideMedia({ slide, onEnded }) {
   const [muted, setMuted] = useState(false)
   useEffect(() => {
     setMuted(false)
-    playVideo(videoRef.current, () => setMuted(true))
-  }, [slide?.file_url])
+    if (slide?.media_type !== 'video') return
+    return playVideo(videoRef.current, { onMuted: () => setMuted(true), onStuck: onEnded })
+  }, [slide?.file_url])  // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    // first click anywhere on the TV page turns the sound on
+    const unmute = () => { if (videoRef.current) { videoRef.current.muted = false; setMuted(false) } }
+    document.addEventListener('click', unmute)
+    return () => document.removeEventListener('click', unmute)
+  }, [])
   if (!slide) return null
   return (
     <div className="relative w-full h-full flex items-center justify-center bg-black overflow-hidden">
@@ -122,7 +129,7 @@ function SlideMedia({ slide, onEnded }) {
           ref={videoRef}
           key={slide.file_url}
           src={slide.file_url}
-          playsInline
+          playsInline preload="auto"
           onEnded={onEnded} onError={onEnded}
           style={{ maxWidth: "100%", maxHeight: "100vh", objectFit: "contain" }}
         />

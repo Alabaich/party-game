@@ -60,7 +60,7 @@ export default function Slideshow() {
       timerRef.current = setTimeout(advance, PHOTO_MS)
     } else {
       // next tick: the <video> for this slide is mounted by then
-      setTimeout(() => playVideo(videoRef.current), 0)
+      setTimeout(() => playVideo(videoRef.current, { onStuck: advance }), 0)
       // safety net if a video never fires ended/error
       timerRef.current = setTimeout(advance, 120000)
     }

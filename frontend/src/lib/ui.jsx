@@ -92,3 +92,15 @@ export function PhotoNotice({ settings, className = '' }) {
     </div>
   )
 }
+
+// Browsers block autoplay with sound until someone has clicked the page.
+// Try with sound, fall back to muted so the slideshow never gets stuck.
+export function playVideo(video, onMuted) {
+  if (!video) return
+  video.muted = false
+  video.play().catch(() => {
+    video.muted = true
+    onMuted?.()
+    video.play().catch(() => {})
+  })
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import { useTheme } from '../lib/ui'
+import { useTheme, playVideo } from '../lib/ui'
 
 const PHOTO_MS = 10000
 
@@ -58,6 +58,11 @@ export default function Slideshow() {
     if (!cur) return
     if (cur.media_type === 'image') {
       timerRef.current = setTimeout(advance, PHOTO_MS)
+    } else {
+      // next tick: the <video> for this slide is mounted by then
+      setTimeout(() => playVideo(videoRef.current), 0)
+      // safety net if a video never fires ended/error
+      timerRef.current = setTimeout(advance, 120000)
     }
     return () => clearTimeout(timerRef.current)
   }, [idx, slides, advance])
@@ -80,8 +85,6 @@ export default function Slideshow() {
             ref={videoRef}
             key={cur.file_url}
             src={cur.file_url}
-            autoPlay
-            muted={false}
             playsInline
             onEnded={advance}
             onError={advance}

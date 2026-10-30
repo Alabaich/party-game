@@ -12,6 +12,7 @@ export default function Dashboard() {
   const [err, setErr] = useState('')
   const [viewing, setViewing] = useState(null)
   const [uploadingId, setUploadingId] = useState(null)
+  const [progress, setProgress] = useState(0)
   const [freeUploading, setFreeUploading] = useState(false)
   const [winInfo, setWinInfo] = useState(null)
   const fileRef = useRef(null)
@@ -72,6 +73,7 @@ export default function Dashboard() {
   const allDone = data.assignments.length > 0 && done === data.assignments.length
 
   function triggerUpload(assignmentId, substituteId = null) {
+    if (uploadingId) return   // one upload at a time
     pickTargetId.current = assignmentId
     pickSubId.current = substituteId
     fileRef.current?.click()
@@ -86,9 +88,9 @@ export default function Dashboard() {
     const files = e.target.files
     const aid = pickTargetId.current
     if (!files?.length || !aid) return
-    setUploadingId(aid); setErr('')
+    setUploadingId(aid); setProgress(0); setErr('')
     try {
-      await uploadAndComplete(uuid, aid, files, pickSubId.current)
+      await uploadAndComplete(uuid, aid, files, pickSubId.current, setProgress)
       await load()
       setViewing(null)
     } catch (e2) {
@@ -277,9 +279,14 @@ export default function Dashboard() {
                       )}
                     </div>
                     <div className="shrink-0 text-2xl">
-                      {isUp ? '⏳' : isDone ? '✅' : '⬜'}
+                      {isUp ? <span className="text-sm font-bold text-zest tabular-nums">{Math.round(progress * 100)}%</span> : isDone ? '✅' : '⬜'}
                     </div>
                   </div>
+                  {isUp && (
+                    <div className="mt-3 h-1.5 rounded-full bg-cream/10 overflow-hidden">
+                      <div className="h-full bg-zest transition-all" style={{ width: `${Math.max(3, progress * 100)}%` }} />
+                    </div>
+                  )}
                   {isDone && <p className="text-mint/70 text-xs mt-2">Tap to view / replace</p>}
                 </div>
               )

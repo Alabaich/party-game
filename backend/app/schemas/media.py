@@ -19,6 +19,7 @@ class PresignIn(BaseModel):
 class PresignOut(BaseModel):
     upload_url: str
     public_url: str
+    media_type: MediaType | None = None
 
 
 class UploadedFile(BaseModel):

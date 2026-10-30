@@ -8,7 +8,7 @@ from ..models import (
     Game, User, Task, Assignment, Media, FreeMedia, AssignmentStatus, MediaType,
 )
 from ..config import settings
-from ..services import views
+from ..services import views, mediafile
 from ..schemas.settings import load_settings
 from ..services.storage import upload_file_to_r2
 
@@ -23,11 +23,8 @@ async def upload_proxy(user_id: str, assignment_id: int,
     a = db.get(Assignment, assignment_id)
     if not a or a.user_id != user_id:
         raise HTTPException(404, "Assignment not found")
-    data, content_type = await _read_media(file)
-    # boto3 is blocking: keep it off the event loop so other players aren't stalled
-    public_url = await run_in_threadpool(
-        upload_file_to_r2, file.filename or "upload", content_type, data)
-    return schemas.PresignOut(upload_url="", public_url=public_url)
+    public_url, media_type = await _store_media(file)
+    return schemas.PresignOut(upload_url="", public_url=public_url, media_type=media_type)
 
 
 @router.post("/u/{user_id}/assignments/{assignment_id}/complete",
@@ -84,16 +81,32 @@ def complete_task(user_id: str, assignment_id: int,
     return views.assignment_out(db, db.get(Game, db.get(User, user_id).game_id), a)
 
 
-async def _read_media(file: UploadFile) -> tuple[bytes, str]:
-    """Only photos/videos, capped at MAX_UPLOAD_MB."""
-    content_type = file.content_type or "application/octet-stream"
-    if not content_type.startswith(("image/", "video/")):
-        raise HTTPException(400, "Only photos and videos are allowed")
+async def _store_media(file: UploadFile) -> tuple[str, str]:
+    """Validate, normalise and stream one upload to R2. Returns (url, image|video)."""
     limit = settings.MAX_UPLOAD_MB * 1024 * 1024
-    data = await file.read(limit + 1)
-    if len(data) > limit:
-        raise HTTPException(413, f"File is too large (max {settings.MAX_UPLOAD_MB} MB)")
-    return data, content_type
+    f = file.file
+    f.seek(0, 2)
+    size = f.tell()
+    f.seek(0)
+    if size == 0:
+        raise HTTPException(400, "The file is empty")
+    if size > limit:
+        raise HTTPException(413, f"File is too large (max {settings.MAX_UPLOAD_MB} MB). Try a shorter video.")
+    head = f.read(32)
+    f.seek(0)
+    kind = mediafile.detect(head, file.filename, file.content_type)
+    if not kind:
+        raise HTTPException(400, "Only photos and videos are allowed")
+    ext, content_type, media_type = kind
+    if ext in ("heic", "heif", "avif"):
+        try:
+            f = await run_in_threadpool(mediafile.heic_to_jpeg, f)
+            ext, content_type, _ = mediafile.JPEG
+        except Exception:
+            raise HTTPException(400, "Couldn't read this photo. Try taking it again with the camera.")
+    # boto3 is blocking: keep it off the event loop so other players aren't stalled
+    url = await run_in_threadpool(upload_file_to_r2, ext, content_type, f)
+    return url, media_type
 
 
 def _recalc_user_completion(db: Session, user_id: str, now: datetime):
@@ -139,11 +152,7 @@ async def free_upload(user_id: str,
     user = db.get(User, user_id)
     if not user:
         raise HTTPException(404, "Player not found")
-    data, content_type = await _read_media(file)
-    # boto3 is blocking: keep it off the event loop so other players aren't stalled
-    public_url = await run_in_threadpool(
-        upload_file_to_r2, file.filename or "upload", content_type, data)
-    media_type = MediaType.video if (content_type or "").startswith("video") else MediaType.image
+    public_url, media_type = await _store_media(file)
     db.add(FreeMedia(user_id=user_id, file_url=public_url, media_type=media_type))
     db.commit()
-    return schemas.PresignOut(upload_url="", public_url=public_url)
+    return schemas.PresignOut(upload_url="", public_url=public_url, media_type=media_type)

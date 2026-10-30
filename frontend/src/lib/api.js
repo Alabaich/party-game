@@ -62,31 +62,47 @@ export const host = {
   consentsCsvUrl: (id) => `${API}/admin/games/${id}/consents.csv`,
 }
 
-async function uploadForm(path, file) {
-  const form = new FormData()
-  form.append('file', file)
-  const res = await fetch(`${API}${path}`, { method: 'POST', body: form })
-  if (!res.ok) {
-    let msg = `Upload failed: HTTP ${res.status}`
-    try { msg = (await res.json()).detail || msg } catch { /* ignore */ }
-    throw new Error(msg)
-  }
-  return res.json()
+// XHR instead of fetch: fetch can't report upload progress, and big phone
+// videos take a while — people re-tap if nothing moves.
+function uploadForm(path, file, onProgress) {
+  return new Promise((resolve, reject) => {
+    const form = new FormData()
+    form.append('file', file, file.name || 'upload')
+    const xhr = new XMLHttpRequest()
+    xhr.open('POST', `${API}${path}`)
+    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded / e.total) }
+    xhr.onload = () => {
+      let body = null
+      try { body = JSON.parse(xhr.responseText) } catch { /* not json */ }
+      if (xhr.status >= 200 && xhr.status < 300) resolve(body)
+      else reject(new Error(body?.detail || `Upload failed (HTTP ${xhr.status})`))
+    }
+    xhr.onerror = () => reject(new Error('Upload failed — check your connection and try again'))
+    xhr.ontimeout = xhr.onerror
+    xhr.send(form)
+  })
 }
 
-export async function uploadFile(uuid, assignmentId, file) {
-  const { public_url } = await uploadForm(`/u/${uuid}/assignments/${assignmentId}/upload`, file)
-  const media_type = (file.type || '').startsWith('video') ? 'video' : 'image'
-  return { public_url, media_type }
+export async function uploadFile(uuid, assignmentId, file, onProgress) {
+  const { public_url, media_type } = await uploadForm(
+    `/u/${uuid}/assignments/${assignmentId}/upload`, file, onProgress)
+  return { public_url, media_type: media_type || ((file.type || '').startsWith('video') ? 'video' : 'image') }
 }
 
-export async function uploadAndComplete(uuid, assignmentId, fileList, substituteTaskId) {
+// onProgress(0..1) covers all files together
+export async function uploadAndComplete(uuid, assignmentId, fileList, substituteTaskId, onProgress) {
+  const list = Array.from(fileList)
+  const total = list.reduce((s, f) => s + (f.size || 1), 0)
+  let done = 0
   const files = []
-  for (const f of Array.from(fileList)) files.push(await uploadFile(uuid, assignmentId, f))
+  for (const f of list) {
+    files.push(await uploadFile(uuid, assignmentId, f, (p) => onProgress?.((done + p * (f.size || 1)) / total)))
+    done += f.size || 1
+  }
   return api.complete(uuid, assignmentId, files, substituteTaskId)
 }
 
-export const freeUpload = (uuid, file) => uploadForm(`/u/${uuid}/free-upload`, file)
+export const freeUpload = (uuid, file, onProgress) => uploadForm(`/u/${uuid}/free-upload`, file, onProgress)
 
 export const downloadUrl = (fileUrl) => `${API}/download?url=${encodeURIComponent(fileUrl)}`
 

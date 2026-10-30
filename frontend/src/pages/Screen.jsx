@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import { useTheme, QRCode, joinUrl, fmtDuration, Prizes, THEME_EMOJI } from '../lib/ui'
+import { useTheme, QRCode, joinUrl, fmtDuration, Prizes, THEME_EMOJI, playVideo } from '../lib/ui'
 
 const PHOTO_MS = 10000
 // ─── Slideshow hook ────────────────────────────────────────────────────────
@@ -109,8 +109,10 @@ function useSlideshow(slides) {
 
 function SlideMedia({ slide, onEnded }) {
   const videoRef = useRef(null)
+  const [muted, setMuted] = useState(false)
   useEffect(() => {
-    if (videoRef.current) videoRef.current.play().catch(() => {})
+    setMuted(false)
+    playVideo(videoRef.current, () => setMuted(true))
   }, [slide?.file_url])
   if (!slide) return null
   return (
@@ -120,7 +122,7 @@ function SlideMedia({ slide, onEnded }) {
           ref={videoRef}
           key={slide.file_url}
           src={slide.file_url}
-          autoPlay playsInline muted={false}
+          playsInline
           onEnded={onEnded} onError={onEnded}
           style={{ maxWidth: "100%", maxHeight: "100vh", objectFit: "contain" }}
         />
@@ -130,6 +132,9 @@ function SlideMedia({ slide, onEnded }) {
           src={slide.file_url}
           style={{ maxWidth: "100%", maxHeight: "100vh", objectFit: "contain" }}
         />
+      )}
+      {muted && slide.media_type === 'video' && (
+        <span className="absolute top-4 right-4 bg-black/70 text-cream/70 text-xs px-3 py-1 rounded-full">🔇 click anywhere for sound</span>
       )}
       <div className="absolute bottom-0 inset-x-0 p-4 bg-gradient-to-t from-black/90 via-black/50 to-transparent">
         <p className="font-display font-extrabold text-2xl text-zest">{slide.user_name}</p>

@@ -252,6 +252,8 @@ function Settings({ game, onSaved }) {
         </Field>
       </Section>
 
+      <Branding game={game} logos={s.logos || []} onChange={(logos) => set({ logos })} />
+
       <Section title="Photo & media release" hint="Players must read and accept this before they can sign up. Every version they accept is stored with a timestamp.">
         <Toggle checked={s.consent.enabled} onChange={(v) => setConsent({ enabled: v })} label="Require consent before joining" />
         {s.consent.enabled && (
@@ -358,6 +360,57 @@ function Settings({ game, onSaved }) {
         </Modal>
       )}
     </div>
+  )
+}
+
+function Branding({ game, logos, onChange }) {
+  const [busy, setBusy] = useState(false)
+  const [err, setErr] = useState('')
+  const setLogo = (i, patch) => onChange(logos.map((l, j) => (j === i ? { ...l, ...patch } : l)))
+  const move = (i, d) => {
+    const j = i + d
+    if (j < 0 || j >= logos.length) return
+    const next = [...logos]; [next[i], next[j]] = [next[j], next[i]]; onChange(next)
+  }
+  async function upload(e) {
+    const files = Array.from(e.target.files || [])
+    e.target.value = ''
+    if (!files.length) return
+    setBusy(true); setErr('')
+    try {
+      const added = []
+      for (const f of files) {
+        const { url } = await host.uploadLogo(game.id, f)
+        added.push({ url, alt: f.name.replace(/\.[^.]+$/, ''), side: logos.length + added.length === 0 ? 'left' : 'right' })
+      }
+      onChange([...logos, ...added])
+    } catch (e2) { setErr(e2.message) } finally { setBusy(false) }
+  }
+  return (
+    <Section title="Branding" hint="Logos of the organiser and buildings. Shown in the top bar of the TV screen and above the game name on phones. White SVG or PNG with a transparent background looks best. Remember to Save.">
+      {logos.map((l, i) => (
+        <div key={l.url} className="flex flex-wrap items-center gap-2 bg-cream/5 rounded-xl p-2">
+          <div className="h-12 w-28 rounded-lg bg-ink flex items-center justify-center p-1.5 border border-cream/10">
+            <img src={l.url} alt="" className="max-h-full max-w-full object-contain" />
+          </div>
+          <input value={l.alt} onChange={(e) => setLogo(i, { alt: e.target.value })} placeholder="Name (e.g. Prism PM)"
+            className="field py-2 text-sm flex-1 min-w-[8rem]" />
+          <select value={l.side || 'left'} onChange={(e) => setLogo(i, { side: e.target.value })}
+            className="bg-ink border border-cream/25 rounded-lg px-2 py-2 text-sm">
+            <option value="left">TV: left</option>
+            <option value="right">TV: right</option>
+          </select>
+          <button onClick={() => move(i, -1)} className="btn-ghost px-3 py-2">↑</button>
+          <button onClick={() => move(i, 1)} className="btn-ghost px-3 py-2">↓</button>
+          <button onClick={() => onChange(logos.filter((_, j) => j !== i))} className="btn-ghost px-3 py-2 text-punch">✕</button>
+        </div>
+      ))}
+      <label className={`btn-ghost text-sm py-2 inline-block cursor-pointer ${busy ? 'opacity-50 pointer-events-none' : ''}`}>
+        {busy ? 'Uploading…' : '+ Upload logo(s)'}
+        <input type="file" accept=".svg,image/svg+xml,image/png,image/jpeg,image/webp" multiple className="hidden" onChange={upload} />
+      </label>
+      {err && <p className="text-punch text-sm">{err}</p>}
+    </Section>
   )
 }
 

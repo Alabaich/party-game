@@ -11,7 +11,8 @@ from ..models import (
 from ..config import settings
 from ..services import views, mediafile
 from ..schemas.settings import load_settings
-from ..services.storage import upload_file_to_r2, StorageError
+from ..services import storage
+from ..services.storage import StorageError
 
 router = APIRouter()
 log = logging.getLogger("storage")
@@ -85,7 +86,7 @@ def complete_task(user_id: str, assignment_id: int,
 
 def _upload(ext: str, content_type: str, f) -> str:
     try:
-        return upload_file_to_r2(ext, content_type, f)
+        return storage.upload_file_to_r2(ext, content_type, f)
     except Exception as e:  # bad key, missing bucket, network...
         log.error("R2 upload failed: %s: %s", type(e).__name__, e)
         raise StorageError(str(e)) from e

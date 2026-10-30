@@ -1,7 +1,8 @@
 """Host endpoints. Every game route checks that the game belongs to the caller."""
 import csv
+import logging
 import io
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import Response
 from sqlalchemy import func
 from sqlalchemy.orm import Session
@@ -16,9 +17,12 @@ from ..services.scheduler import start_game
 from ..services.tasks import load_pack_into_game
 from ..services.consent import ensure_consent_document
 from ..services.storage import check_storage
+from ..services import storage
+from ..services import mediafile
 from fastapi.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+log = logging.getLogger("storage")
 
 
 @router.get("/storage-check")
@@ -119,6 +123,27 @@ def reveal(game: Game = Depends(owned_game), db: Session = Depends(get_db)):
     game.places_revealed = True
     db.commit()
     return views.game_admin(db, game)
+
+
+@router.post("/games/{game_id}/logo")
+async def upload_logo(file: UploadFile = File(...), game: Game = Depends(owned_game)):
+    """Upload a branding logo; returns its URL to put into settings.logos."""
+    f = file.file
+    f.seek(0, 2)
+    if f.tell() > 2 * 1024 * 1024:
+        raise HTTPException(413, "Logo is too large (max 2 MB)")
+    f.seek(0)
+    head = f.read(1024)
+    f.seek(0)
+    kind = mediafile.detect_logo(head, file.filename)
+    if not kind:
+        raise HTTPException(400, "Use an SVG, PNG, JPG or WebP file")
+    try:
+        url = await run_in_threadpool(storage.upload_file_to_r2, kind[0], kind[1], f)
+    except Exception as e:
+        log.error("logo upload failed: %s: %s", type(e).__name__, e)
+        raise HTTPException(503, "Photo storage isn't working right now")
+    return {"url": url}
 
 
 # ---------- players ----------

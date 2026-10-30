@@ -63,6 +63,21 @@ def detect(head: bytes, filename: str | None, content_type: str | None) -> tuple
     return None
 
 
+LOGO_TYPES = {"png", "jpg", "webp", "gif"}
+
+
+def detect_logo(head: bytes, filename: str | None) -> tuple[str, str] | None:
+    """Logos may also be SVG. They're only ever shown via <img>, where scripts
+    inside an SVG don't run, and they're served from the storage domain."""
+    text = head.lstrip()[:200].lower()
+    if text.startswith(b"<svg") or (text.startswith(b"<?xml") and b"<svg" in head.lower()):
+        return ("svg", "image/svg+xml")
+    found = sniff(head)
+    if found and found[0] in LOGO_TYPES:
+        return found[0], found[1]
+    return None
+
+
 def heic_to_jpeg(src: BinaryIO) -> BinaryIO:
     """HEIC/HEIF -> JPEG so every browser (and the TV) can show it."""
     import pillow_heif

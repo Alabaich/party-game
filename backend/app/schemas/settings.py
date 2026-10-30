@@ -73,6 +73,12 @@ class ConsentSettings(BaseModel):
         default="I have read the Photo & Media Release and I agree to it.", max_length=300)
 
 
+class Logo(BaseModel):
+    url: str = Field(max_length=500)
+    alt: str = Field(default="", max_length=80)
+    side: Literal["left", "right"] = "left"   # where it sits in the TV top bar
+
+
 class GameSettings(BaseModel):
     theme: Theme = "party"
     welcome: str = Field(default="", max_length=1000)
@@ -86,6 +92,8 @@ class GameSettings(BaseModel):
     # host_only: only the host's logged-in browser (TV); players see their own uploads
     gallery: Literal["public", "host_only"] = "public"
     prizes: list[Prize] = []
+    # branding: organiser / building logos (best as white SVG or PNG on transparent)
+    logos: list[Logo] = Field(default=[], max_length=8)
 
 
 EMAIL_QUESTION = Question(

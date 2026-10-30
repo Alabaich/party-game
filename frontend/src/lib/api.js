@@ -60,6 +60,14 @@ export const host = {
   loadPack: (id, pack, replace) => post(`/admin/games/${id}/tasks/load-pack?pack=${pack}&replace=${!!replace}`),
   media: (id) => jfetch(`/admin/games/${id}/media`),
   setHidden: (id, kind, mid, hidden) => post(`/admin/games/${id}/media/${kind}/${mid}/hidden?hidden=${hidden}`),
+  uploadLogo: async (id, file) => {
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(`${API}/admin/games/${id}/logo`, { method: 'POST', body: form, credentials: 'same-origin' })
+    const body = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(body.detail || `Upload failed (HTTP ${res.status})`)
+    return body
+  },
   consentsCsvUrl: (id) => `${API}/admin/games/${id}/consents.csv`,
 }
 

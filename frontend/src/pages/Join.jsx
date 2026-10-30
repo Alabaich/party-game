@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, store } from '../lib/api'
-import { useTheme, THEME_EMOJI, Center, Modal, Prizes, PhotoNotice } from '../lib/ui'
+import { useTheme, THEME_EMOJI, Center, Modal, Prizes, PhotoNotice, LogoRow } from '../lib/ui'
 
 export default function Join() {
   const { code: rawCode } = useParams()
@@ -73,6 +73,7 @@ export default function Join() {
 
   return (
     <div className="relative z-10 min-h-screen flex flex-col items-center px-6 py-10 text-cream font-body">
+      <LogoRow logos={s.logos} className="mb-6" />
       <div className="animate-float text-6xl mb-2">{emoji}</div>
       <h1 className="font-display font-extrabold text-4xl text-zest text-center leading-tight mb-2">{game.name}</h1>
       {s.welcome && <p className="text-cream/70 text-center max-w-sm mb-6 whitespace-pre-line">{s.welcome}</p>}

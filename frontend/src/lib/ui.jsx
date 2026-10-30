@@ -108,3 +108,28 @@ export function playVideo(video, { onMuted, onStuck } = {}) {
   const t = setTimeout(() => { if (video.currentTime < 0.2) onStuck?.() }, 8000)
   return () => clearTimeout(t)
 }
+
+// Branding: organiser / building logos. TV: left- and right-aligned groups in a
+// top bar. Phone: one centred row.
+export function LogoBar({ logos, className = '' }) {
+  const list = logos || []
+  if (!list.length) return null
+  const side = (s) => list.filter((l) => (l.side || 'left') === s)
+  const img = (l, i) => <img key={i} src={l.url} alt={l.alt || ''} className="h-full w-auto max-w-[14rem] object-contain" />
+  return (
+    <div className={`flex items-center justify-between gap-6 ${className}`}>
+      <div className="flex items-center gap-6 h-full">{side('left').map(img)}</div>
+      <div className="flex items-center gap-6 h-full">{side('right').map(img)}</div>
+    </div>
+  )
+}
+
+export function LogoRow({ logos, className = '' }) {
+  const list = logos || []
+  if (!list.length) return null
+  return (
+    <div className={`flex items-center justify-center flex-wrap gap-x-5 gap-y-2 ${className}`}>
+      {list.map((l, i) => <img key={i} src={l.url} alt={l.alt || ''} className="h-8 w-auto max-w-[8rem] object-contain" />)}
+    </div>
+  )
+}

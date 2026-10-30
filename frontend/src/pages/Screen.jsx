@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import { useTheme, QRCode, joinUrl, fmtDuration, Prizes, THEME_EMOJI, playVideo } from '../lib/ui'
+import { useTheme, QRCode, joinUrl, fmtDuration, Prizes, THEME_EMOJI, playVideo, LogoBar } from '../lib/ui'
 import Pumpkin from '../lib/Pumpkin'
 
 const PHOTO_MS = 10000
@@ -238,15 +238,20 @@ export default function Screen() {
   const isNotif = !!currentNotif
   const spooky = game?.settings.theme === 'halloween'
 
-  // ── PRE-GAME SCREEN ──────────────────────────────────────────────────────
-  if (game && !game.started) {
+  const logos = game?.settings.logos || []
+
+  // ── BIG QR SCREEN: before the start, and after it until the first photo ──
+  if (game && (!game.started || slides.length === 0)) {
+    const started = game.started
     return (
-      <div className="relative z-10 min-h-screen text-cream font-body flex flex-col lg:flex-row">
-        <div className="lg:w-1/2 flex flex-col items-center justify-center px-10 py-12 border-r border-cream/10">
+      <div className="relative z-10 min-h-screen text-cream font-body flex flex-col">
+        <LogoBar logos={logos} className="h-14 px-10 pt-5" />
+        <div className="flex-1 flex flex-col lg:flex-row">
+        <div className="lg:w-1/2 flex flex-col items-center justify-center px-10 py-8 border-r border-cream/10">
           <h1 className="font-display font-extrabold text-4xl xl:text-5xl text-zest text-center mb-2">{emoji} {game.name}</h1>
-          <p className="text-mint tracking-widest text-sm mb-2">SCAN TO JOIN</p>
+          <p className="text-mint tracking-widest text-sm mb-2">{started ? 'LATE? SCAN TO JOIN' : 'SCAN TO JOIN'}</p>
           {spooky ? (
-            <Pumpkin value={url} announce={joined} className="w-full max-w-[34rem] h-[56vh]" />
+            <Pumpkin value={url} announce={joined} className="w-full max-w-[34rem] h-[52vh]" />
           ) : (
             <>
               <div className="bg-white p-3 rounded-2xl mb-2 shadow-2xl"><QRCode value={url} size={260} /></div>
@@ -259,10 +264,27 @@ export default function Screen() {
           <div className="text-center mt-4">
             <p className="font-display font-extrabold text-7xl text-zest leading-none tabular-nums">{game.player_count}</p>
             <p className="text-cream/70 tracking-widest text-sm mt-1">{game.player_count === 1 ? 'NEIGHBOUR' : 'NEIGHBOURS'} JOINED</p>
-            <p className="text-cream/40 text-sm mt-2">{game.is_draft ? 'Registration opens soon…' : 'The game starts soon…'}</p>
+            <p className="text-cream/40 text-sm mt-2">
+              {started ? 'The game is on!' : game.is_draft ? 'Registration opens soon…' : 'The game starts soon…'}
+            </p>
           </div>
         </div>
-        <div className="lg:w-1/2 flex flex-col justify-center px-10 py-12">
+        {started ? (
+          <div className="lg:w-1/2 flex flex-col px-10 py-8 min-h-0">
+            <p className="font-display font-extrabold text-5xl text-zest leading-tight">{emoji} The game has started!</p>
+            <p className="text-cream/70 text-xl mt-3 mb-8">📸 Waiting for the first photos… Complete a task to be first on the big screen!</p>
+            <p className="text-mint tracking-widest text-sm mb-3">PLAYERS</p>
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-2 overflow-hidden">
+              {items.map((it) => (
+                <div key={it.user_id} className="card px-3 py-2 flex justify-between gap-2">
+                  <span className="font-bold truncate">{it.name}</span>
+                  <span className="text-zest tabular-nums shrink-0">{it.completed_count}/{it.total || n}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+        <div className="lg:w-1/2 flex flex-col justify-center px-10 py-8">
           <p className="text-mint tracking-widest text-sm mb-4">HOW TO PLAY</p>
           <div className="space-y-5">
             {prizes.some((p) => p.title) && (
@@ -276,6 +298,8 @@ export default function Screen() {
             <Rule emoji="📱" title="Just want to share?">Use the <span className="text-zest font-bold">📸 Just Upload</span> button to post any photo or video to the big screen without completing a task.</Rule>
           </div>
         </div>
+        )}
+        </div>
       </div>
     )
   }
@@ -286,6 +310,7 @@ export default function Screen() {
 
       {/* Left: leaderboard */}
       <div className="w-1/2 flex-shrink-0 h-screen overflow-y-auto px-5 py-6 border-r border-cream/10 bg-ink">
+        <LogoBar logos={logos} className="h-10 mb-4" />
         <header className="flex items-center justify-between mb-4">
           <h1 className="font-display font-extrabold text-2xl text-zest">🏆 {game?.name || 'Leaderboard'}</h1>
           <Link to={`/g/${code}/slideshow`} className="bg-cream/10 px-3 py-2 rounded-xl text-xs">📺 Full</Link>

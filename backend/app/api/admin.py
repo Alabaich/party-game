@@ -15,8 +15,16 @@ from ..services.codes import new_game_code
 from ..services.scheduler import start_game
 from ..services.tasks import load_pack_into_game
 from ..services.consent import ensure_consent_document
+from ..services.storage import check_storage
+from fastapi.concurrency import run_in_threadpool
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/storage-check")
+async def storage_check(_: Account = Depends(current_account)):
+    ok, message = await run_in_threadpool(check_storage)
+    return {"ok": ok, "message": message}
 
 
 # ---------- games ----------

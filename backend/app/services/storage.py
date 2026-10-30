@@ -23,3 +23,24 @@ def upload_file_to_r2(ext: str, content_type: str, fileobj) -> str:
     _s3.upload_fileobj(fileobj, settings.R2_BUCKET, key,
                        ExtraArgs={"ContentType": content_type}, Config=_transfer)
     return f"{settings.R2_PUBLIC_BASE_URL.rstrip('/')}/{key}"
+
+
+
+class StorageError(Exception):
+    pass
+
+
+def check_storage() -> tuple[bool, str]:
+    """Write and delete a tiny object: proves the key, secret and bucket work."""
+    key = f"healthcheck-{uuid.uuid4().hex}.txt"
+    try:
+        _s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=b"ok", ContentType="text/plain")
+        _s3.delete_object(Bucket=settings.R2_BUCKET, Key=key)
+        return True, "Photo storage works"
+    except Exception as e:
+        msg = str(e)
+        if "Unauthorized" in msg or "InvalidAccessKeyId" in msg or "SignatureDoesNotMatch" in msg:
+            msg = "R2 key is invalid or expired — create a new R2 API token and update .env"
+        elif "NoSuchBucket" in msg:
+            msg = f"Bucket '{settings.R2_BUCKET}' doesn't exist"
+        return False, msg

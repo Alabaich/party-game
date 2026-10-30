@@ -41,6 +41,7 @@ export const host = {
   login: (body) => post('/auth/login', body),
   logout: () => post('/auth/logout'),
   me: () => jfetch('/auth/me'),
+  storageCheck: () => jfetch('/admin/storage-check'),
   games: () => jfetch('/admin/games'),
   createGame: (body) => post('/admin/games', body),
   game: (id) => jfetch(`/admin/games/${id}`),

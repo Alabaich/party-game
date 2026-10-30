@@ -82,6 +82,7 @@ function Control({ game, reload }) {
   const finished = lb.filter((i) => i.finished)
   return (
     <div className="space-y-6">
+      <StorageStatus />
       <div className="card p-5 flex flex-col sm:flex-row gap-5 items-center">
         <div className="bg-white p-2 rounded-xl"><QRCode value={url} size={150} /></div>
         <div className="flex-1 space-y-2 text-center sm:text-left">
@@ -159,6 +160,21 @@ function Control({ game, reload }) {
           <p className="text-cream/40 text-xs mt-3">Units of winners are in the Players tab.</p>
         </div>
       )}
+    </div>
+  )
+}
+
+function StorageStatus() {
+  const [s, setS] = useState(null)
+  const check = useCallback(() => { setS(null); host.storageCheck().then(setS).catch((e) => setS({ ok: false, message: e.message })) }, [])
+  useEffect(() => { check() }, [check])
+  return (
+    <div className={`rounded-2xl px-4 py-3 text-sm flex items-center gap-3 border-2 ${
+      !s ? 'border-cream/15 text-cream/50' : s.ok ? 'border-mint/30 text-mint' : 'border-punch/60 bg-punch/10 text-cream'}`}>
+      <span className="flex-1">
+        {!s ? 'Checking photo storage…' : s.ok ? '✅ Photo storage works' : <>❌ <b>Uploads will fail:</b> {s.message}</>}
+      </span>
+      <button onClick={check} className="text-xs underline shrink-0">re-check</button>
     </div>
   )
 }

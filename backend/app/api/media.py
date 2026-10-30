@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.concurrency import run_in_threadpool
@@ -10,9 +11,10 @@ from ..models import (
 from ..config import settings
 from ..services import views, mediafile
 from ..schemas.settings import load_settings
-from ..services.storage import upload_file_to_r2
+from ..services.storage import upload_file_to_r2, StorageError
 
 router = APIRouter()
+log = logging.getLogger("storage")
 
 
 @router.post("/u/{user_id}/assignments/{assignment_id}/upload",
@@ -81,6 +83,14 @@ def complete_task(user_id: str, assignment_id: int,
     return views.assignment_out(db, db.get(Game, db.get(User, user_id).game_id), a)
 
 
+def _upload(ext: str, content_type: str, f) -> str:
+    try:
+        return upload_file_to_r2(ext, content_type, f)
+    except Exception as e:  # bad key, missing bucket, network...
+        log.error("R2 upload failed: %s: %s", type(e).__name__, e)
+        raise StorageError(str(e)) from e
+
+
 async def _store_media(file: UploadFile) -> tuple[str, str]:
     """Validate, normalise and stream one upload to R2. Returns (url, image|video)."""
     limit = settings.MAX_UPLOAD_MB * 1024 * 1024
@@ -105,7 +115,10 @@ async def _store_media(file: UploadFile) -> tuple[str, str]:
         except Exception:
             raise HTTPException(400, "Couldn't read this photo. Try taking it again with the camera.")
     # boto3 is blocking: keep it off the event loop so other players aren't stalled
-    url = await run_in_threadpool(upload_file_to_r2, ext, content_type, f)
+    try:
+        url = await run_in_threadpool(_upload, ext, content_type, f)
+    except StorageError:
+        raise HTTPException(503, "Photo storage isn't working right now — please tell the host.")
     return url, media_type
 
 

@@ -1,7 +1,7 @@
 import uuid
 import boto3
 from botocore.config import Config
-from .config import settings
+from ..config import settings
 
 _s3 = boto3.client(
     "s3",
@@ -16,14 +16,9 @@ _s3 = boto3.client(
 def make_presigned_put(filename: str, content_type: str) -> tuple[str, str]:
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
     key = f"{uuid.uuid4()}.{ext}"
-
     upload_url = _s3.generate_presigned_url(
         "put_object",
-        Params={
-            "Bucket": settings.R2_BUCKET,
-            "Key": key,
-            "ContentType": content_type,
-        },
+        Params={"Bucket": settings.R2_BUCKET, "Key": key, "ContentType": content_type},
         ExpiresIn=3600,
     )
     public_url = f"{settings.R2_PUBLIC_BASE_URL.rstrip('/')}/{key}"
@@ -34,10 +29,5 @@ def upload_file_to_r2(filename: str, content_type: str, data: bytes) -> str:
     """Upload file bytes server-side and return the public URL."""
     ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else "bin"
     key = f"{uuid.uuid4()}.{ext}"
-    _s3.put_object(
-        Bucket=settings.R2_BUCKET,
-        Key=key,
-        Body=data,
-        ContentType=content_type,
-    )
+    _s3.put_object(Bucket=settings.R2_BUCKET, Key=key, Body=data, ContentType=content_type)
     return f"{settings.R2_PUBLIC_BASE_URL.rstrip('/')}/{key}"

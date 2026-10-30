@@ -21,7 +21,10 @@ export const api = {
   startGame: () => jfetch('/game/start', { method: 'POST' }),
   revealPlaces: () => jfetch('/game/reveal', { method: 'POST' }),
   leaderboard: () => jfetch('/leaderboard'),
-  slideshow: () => jfetch('/slideshow'),
+  // gameId is optional: omit for legacy unscoped behavior (all media);
+  // pass an id to restrict to one game's players.
+  slideshow: (gameId) =>
+    jfetch(gameId ? `/slideshow?game_id=${encodeURIComponent(gameId)}` : '/slideshow'),
   complete: (uuid, aid, files) =>
     jfetch(`/u/${uuid}/assignments/${aid}/complete`, {
       method: 'POST', body: JSON.stringify({ files }),
@@ -65,6 +68,11 @@ export async function freeUpload(uuid, file) {
   }
   return res.json()
 }
+
+// Pin the legacy /gallery to the original birthday game.
+// Leave as null (or '') to keep showing ALL media (current behavior).
+// After running the backfill script, set this to that game's id.
+export const BIRTHDAY_GAME_ID = null
 
 export const store = {
   getUuid: () => localStorage.getItem('player_uuid'),

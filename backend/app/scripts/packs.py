@@ -13,16 +13,16 @@ HALLOWEEN = [
     ("Take a selfie in your costume next to the spookiest decoration you can find.", S, False),
     ("Snap a photo of the best pumpkin or jack-o'-lantern at the party.", S, False),
     ("Record a 5-second video of your best monster roar.", S, False),
-    ("Find someone who lives in the OTHER building and take a selfie together.", S, False),
-    ("Find a neighbour you have never talked to before, learn their name, and take a selfie together.", S, False),
-    ("Find someone who has lived here longer than you. Ask for their favourite spot nearby and take a photo together.", S, False),
-    ("Take a group photo with at least 5 people in costume.", S, False),
+    ("Find a player who lives in the OTHER building and take a selfie together.", S, False),
+    ("Find a player you have never talked to before, learn their name, and take a selfie together.", S, False),
+    ("Find a player who has lived here longer than you. Ask for their favourite spot nearby and take a photo together.", S, False),
+    ("Take a group photo with at least 4 other players.", S, False),
     ("Record a short hello video: your first name and your favourite Halloween candy.", S, False),
-    ("Photograph the costume you think deserves first prize (ask permission first!).", S, False),
+    ("Ask the player whose costume you think deserves first prize to pose for a photo.", S, False),
     ("Strike your scariest pose next to the candy table.", S, False),
-    ("Find someone who loves the same candy as you and take a photo holding it together.", S, False),
+    ("Find a player who loves the same candy as you and take a photo holding it together.", S, False),
     ("Get a high-five from a Prism team member on video.", S, False),
-    ("Find someone whose costume matches a colour of yours and take a photo together.", S, False),
+    ("Find a player whose costume matches a colour of yours and take a photo together.", S, False),
     # ---- TARGETED ----
     ("Find {target} and find out what they're dressed as. Take a photo of them in costume.", T, False),
     ("Ask {target} for their favourite scary movie and record them saying it.", T, False),
@@ -31,14 +31,14 @@ HALLOWEEN = [
     ("Ask {target} how long they've lived in the building and take a photo together.", T, False),
     ("Trade a piece of candy with {target} and photograph the trade.", T, False),
     ("Get {target} to teach you a dance move. Record it.", T, False),
-    ("Introduce {target} to someone they haven't met yet. Photo of the three of you.", T, False),
+    ("Introduce {target} to another player they haven't met yet. Photo of the three of you.", T, False),
     ("Ask {target} about their best Halloween memory and record 10 seconds of the story.", T, False),
     ("Pose with {target} as a vampire and their (willing) victim.", T, False),
     # ---- PAIRED ----
     ("You and {target}: recreate a famous horror movie poster.", P, False),
     ("You and {target}: tell a 10-second spooky story on video, one sentence each.", P, False),
     ("You and {target}: haunt the party as two ghosts. Photo proof.", P, False),
-    ("You and {target}: find a third neighbour and make a monster trio photo.", P, False),
+    ("You and {target}: find a third player and make a monster trio photo.", P, False),
     ("You and {target}: slow-motion scream video.", P, False),
     ("You and {target}: rate each other's costumes from 1 to 10 on video.", P, False),
     ("You and {target}: make a spider with your hands (8 fingers!) and take a photo.", P, False),
@@ -49,13 +49,13 @@ HALLOWEEN = [
 DIWALI = [
     # ---- SOLO ----
     ("Take a selfie next to the most beautiful diya or light decoration.", S, False),
-    ("Photograph the most colourful outfit at the party (ask permission first!).", S, False),
-    ("Find someone who lives in the OTHER building and take a selfie together.", S, False),
-    ("Find a neighbour you've never met, learn their name, and take a photo together.", S, False),
+    ("Ask the player with the most colourful outfit to pose for a photo.", S, False),
+    ("Find a player who lives in the OTHER building and take a selfie together.", S, False),
+    ("Find a player you've never met, learn their name, and take a photo together.", S, False),
     ("Take a photo of your favourite sweet on the table before you eat it.", S, False),
     ("Record a 10-second video wishing everyone a Happy Diwali in any language.", S, False),
-    ("Take a group photo with at least 5 people making a heart with their hands.", S, False),
-    ("Find someone who has lived here longer than you and ask for their favourite spot nearby. Photo together.", S, False),
+    ("Take a group photo with at least 4 other players making a heart with their hands.", S, False),
+    ("Find a player who has lived here longer than you and ask for their favourite spot nearby. Photo together.", S, False),
     ("Photograph a rangoli or the brightest light in the room.", S, False),
     ("Get a high-five from a Prism team member on video.", S, False),
     # ---- TARGETED ----
@@ -63,7 +63,7 @@ DIWALI = [
     ("Take a selfie with {target} holding a light (phone flashlight counts!).", T, False),
     ("Ask {target} for their favourite festive sweet and photograph them with a sweet.", T, False),
     ("Learn a dance move from {target}. Record it.", T, False),
-    ("Introduce {target} to someone they haven't met yet. Photo of the three of you.", T, False),
+    ("Introduce {target} to another player they haven't met yet. Photo of the three of you.", T, False),
     ("Ask {target} how long they've lived in the building and take a photo together.", T, False),
     ("Take a photo of {target} with the best smile of the night.", T, False),
     ("Find out a wish {target} has for the new year and record them saying it.", T, False),
@@ -71,7 +71,7 @@ DIWALI = [
     ("You and {target}: strike a Bollywood movie poster pose.", P, False),
     ("You and {target}: dance together for 10 seconds on video.", P, False),
     ("You and {target}: make a heart shape with a light and take a photo.", P, False),
-    ("You and {target}: find a third neighbour and take a festive trio photo.", P, False),
+    ("You and {target}: find a third player and take a festive trio photo.", P, False),
     ("You and {target}: find one thing you have in common and announce it on video.", P, False),
     ("You and {target}: share a sweet and photograph the moment.", P, False),
     ("You and {target}: mirror selfie in your festive best.", P, False),
@@ -121,8 +121,8 @@ BIRTHDAY = [
 ]
 
 WILDCARDS = [
-    "Take a NEW group photo with at least 4 people you didn't know before today, all looking at the camera.",
-    "Record a 10-second video with 3 neighbours waving and saying hi to the camera together.",
+    "Take a NEW group photo with at least 4 players you didn't know before today, all looking at the camera.",
+    "Record a 10-second video with 3 other players waving and saying hi to the camera together.",
 ]
 
 PACKS = {

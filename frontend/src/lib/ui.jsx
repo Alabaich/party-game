@@ -133,3 +133,13 @@ export function LogoRow({ logos, className = '' }) {
     </div>
   )
 }
+
+export const PHOTO_RULE = "Ask before you snap. Only photograph people who are playing, and no photos of kids unless they're yours."
+
+export function PhotoRule({ className = '' }) {
+  return (
+    <p className={`rounded-2xl border border-punch/40 bg-punch/10 px-4 py-3 text-[15px] leading-snug text-cream/90 ${className}`}>
+      📸 {PHOTO_RULE}
+    </p>
+  )
+}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import { useTheme, QRCode, joinUrl, fmtDuration, Prizes, THEME_EMOJI, playVideo, LogoBar } from '../lib/ui'
+import { useTheme, QRCode, joinUrl, fmtDuration, Prizes, THEME_EMOJI, playVideo, LogoBar, PHOTO_RULE } from '../lib/ui'
 import Pumpkin from '../lib/Pumpkin'
 
 const PHOTO_MS = 10000
@@ -285,7 +285,8 @@ export default function Screen() {
         {started ? (
           <div className="lg:w-1/2 flex flex-col px-10 py-8 min-h-0">
             <p className="font-display font-extrabold text-5xl text-zest leading-tight">{emoji} The game has started!</p>
-            <p className="text-cream/70 text-xl mt-3 mb-8">📸 Waiting for the first photos… Complete a task to be first on the big screen!</p>
+            <p className="text-cream/70 text-xl mt-3">📸 Waiting for the first photos… Complete a task to be first on the big screen!</p>
+            <p className="text-cream/80 text-lg mt-3 mb-8">🙋 {PHOTO_RULE}</p>
             <p className="text-mint tracking-widest text-sm mb-3">PLAYERS</p>
             <div className="grid grid-cols-2 xl:grid-cols-3 gap-2 overflow-hidden">
               {items.map((it) => (
@@ -304,7 +305,8 @@ export default function Screen() {
               <div className="mb-2"><p className="font-display font-bold text-cream mb-2">🏆 Prizes for the fastest</p><Prizes prizes={prizes} /></div>
             )}
             <Rule emoji="🎯" title={`Complete ${n} tasks`}>Each player gets {n} challenges — solo, finding another player, or paired with a partner. A great way to meet your neighbours!</Rule>
-            <Rule emoji="📸" title="Upload proof">Every completed task needs photo or video evidence. Tap the task to upload.</Rule>
+            <Rule emoji="📸" title="Upload proof">Every completed task needs photo or video evidence. Tap 📷 Add photo under the task.</Rule>
+            <Rule emoji="🙋" title="Ask before you snap">Only photograph people who are playing, and no photos of kids unless they're yours.</Rule>
             <Rule emoji="⚡" title="Fastest wins">The timer starts when the game begins. Finish all {n} tasks as fast as possible.</Rule>
             <Rule emoji="🤝" title="Paired tasks">When one partner uploads proof — the task closes for both automatically.</Rule>
             <Rule emoji="🃏" title="Can't do a task?">Tap <span className="text-zest font-bold">Can't do this one?</span> under the task and complete a wildcard instead.</Rule>

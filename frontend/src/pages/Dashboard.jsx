@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, uploadAndComplete, freeUpload, store, downloadUrl } from '../lib/api'
 import {
-  useTheme, fmtDuration, Center, Prizes, Modal, PhotoNotice, TYPE_COLOR, THEME_EMOJI,
+  useTheme, fmtDuration, Center, Prizes, Modal, PhotoNotice, PhotoRule, TYPE_COLOR, THEME_EMOJI,
 } from '../lib/ui'
 
 const PHONE_TYPE_LABEL = { 1: 'SOLO', 2: 'FIND', 3: 'PAIR' }
@@ -212,6 +212,7 @@ export default function Dashboard() {
           <div className="animate-float text-5xl mb-4">⏳</div>
           <p className="font-display font-extrabold text-3xl text-zest mb-2">Waiting to start</p>
           <p className="text-cream/80 text-base mb-8">The game begins when the host says go. Keep this page open!</p>
+          <PhotoRule className="text-left mb-4" />
           <PhotoNotice settings={game.settings} className="text-left mb-8" />
           {prizes.some((p) => p.title) && (
             <div className="text-left mb-8">
@@ -240,6 +241,7 @@ export default function Dashboard() {
           <div className="rounded-2xl border border-zest/35 bg-zest/[0.12] px-4 py-3 text-base leading-snug mb-5">
             Do each task and tap <b>📷 Add photo</b> to prove it. Fastest to finish all {data.assignments.length} wins!
           </div>
+          <PhotoRule className="mb-5" />
           <div className="flex items-center justify-between mb-3">
             <p className="font-display font-bold text-xl">Your tasks</p>
             <span className="font-body font-bold text-mint bg-mint/15 px-3 py-1 rounded-full text-[15px] tabular-nums">

@@ -3,8 +3,11 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine, SessionLocal
 from .config import settings
-from .seed import seed_tasks_if_empty
-from .routes import router
+from .scripts.seed import seed_tasks_if_empty
+from .api import router
+
+# import models package so all tables are registered on Base before create_all
+from . import models  # noqa: F401
 
 
 @asynccontextmanager

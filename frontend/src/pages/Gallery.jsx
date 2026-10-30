@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Link } from 'react-router-dom'
-import { api } from '../lib/api'
+import { api, BIRTHDAY_GAME_ID } from '../lib/api'
 
 function fmtDur(sec) {
   if (sec == null) return ''
@@ -143,7 +143,9 @@ export default function Gallery() {
 
   const load = useCallback(async () => {
     try {
-      const items = await api.slideshow()
+      // Pinned to the original birthday game when BIRTHDAY_GAME_ID is set;
+      // otherwise shows all media (legacy behavior).
+      const items = await api.slideshow(BIRTHDAY_GAME_ID)
       setSlides(items)
     } catch { /* ignore */ }
     finally { setLoading(false) }

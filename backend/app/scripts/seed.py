@@ -1,5 +1,10 @@
+"""Seed the global task list.
+
+Importable: `from app.scripts.seed import seed_tasks_if_empty`
+Runnable:   `python -m app.scripts.seed`
+"""
 from sqlalchemy.orm import Session
-from .models import Task, TaskType
+from ..models import Task, TaskType
 
 # (description, type, is_alcoholic)
 SEED_TASKS = [
@@ -51,3 +56,17 @@ def seed_tasks_if_empty(db: Session) -> None:
     for desc, ttype, alco in SEED_TASKS:
         db.add(Task(description=desc, type=ttype, is_alcoholic=alco))
     db.commit()
+
+
+def main() -> None:
+    from ..database import SessionLocal
+    db = SessionLocal()
+    try:
+        seed_tasks_if_empty(db)
+        print(f"Seed complete. Tasks in DB: {db.query(Task).count()}")
+    finally:
+        db.close()
+
+
+if __name__ == "__main__":
+    main()

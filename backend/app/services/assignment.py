@@ -21,7 +21,7 @@
 import uuid
 import random
 from sqlalchemy.orm import Session
-from .models import (
+from ..models import (
     User, Task, Assignment, GameState, TaskType, AssignmentStatus
 )
 
@@ -98,7 +98,6 @@ def _enforce_alcohol_limit(db: Session, user: User,
             continue
         repl = usage.pick(by_type[t.type], exclude_ids=current_ids, alcoholic=False)
         if repl:
-            # коригуємо лічильник: знімаємо стару, додаємо нову
             usage.count[a.task_id] = max(0, usage.count.get(a.task_id, 1) - 1)
             current_ids.discard(a.task_id)
             a.task_id = repl.id
@@ -126,14 +125,8 @@ def assign_tasks_for_all(db: Session):
     n = len(users)
 
     # ===== Крок 1: Type3 пари =====
-    # Модель: КОЖНЕ T3-завдання -> рівно одна пара. Тобто пар = к-ть T3-завдань
-    # (отже всі парні завдання задіяні, кожне один раз). Гравець може бути в
-    # кількох парах — ліміт участей = реальні вільні слоти (TASKS_PER_USER - 2,
-    # бо 1 слот резервуємо під T1 і 1 під T2). Партнери різні, без дубля завдання.
     paired_tasks = list(by_type[TaskType.PAIRED])
     random.shuffle(paired_tasks)
-    # сортуємо так, щоб алкогольні T3 опрацювати ПЕРШИМИ — їх складніше розмістити
-    # (потрібна пара, де обидва п'ють), тож хапаємо доступні пари заздалегідь
     paired_tasks.sort(key=lambda t: (not t.is_alcoholic))
 
     n = len(users)
@@ -158,12 +151,10 @@ def assign_tasks_for_all(db: Session):
 
     order = [u.id for u in users]
     pairs_made = 0
-    everyone_paired = set()   # хто вже має >=1 пару
+    everyone_paired = set()
 
-    # Для кожного T3-завдання знаходимо валідну пару гравців.
     for task in paired_tasks:
-        need_both_drink = task.is_alcoholic   # алко-T3 лише в пару обох-питущих
-        # кандидати: є вільний слот + завдання ще не в них
+        need_both_drink = task.is_alcoholic
         def candidates():
             cs = [uid for uid in order
                   if pair_count(uid) < MAX_PAIR_SLOTS and task.id not in task_ids_of(uid)]
@@ -171,19 +162,15 @@ def assign_tasks_for_all(db: Session):
                 cs = [uid for uid in cs if user_by_id[uid].is_drinking]
             return cs
 
-        # пріоритет: спершу ті, хто ще БЕЗ жодної пари (щоб гарантувати >=1 кожному),
-        # далі — хто з найменшою к-тю пар (рівномірність участей)
         def sort_key(uid):
             return (uid in everyone_paired, pair_count(uid), random.random())
 
         placed = False
-        # кілька спроб з перемішуванням, щоб обійти конфлікт «однакові партнери»
         for _attempt in range(40):
             cs = sorted(candidates(), key=sort_key)
             if len(cs) < 2:
                 break
             a_id = cs[0]
-            # партнер: не сам, не вже-партнер, валідний за випивкою
             partner = None
             for cand in cs[1:]:
                 if cand != a_id and cand not in partners[a_id]:
@@ -197,10 +184,7 @@ def assign_tasks_for_all(db: Session):
             pairs_made += 1
             placed = True
             break
-        # якщо алко-T3 не вдалось розмістити (нема двох вільних питущих) —
-        # пропускаємо його (інакше порушили б алко-ліміт). Не-алко завжди розміститься.
         if not placed and not task.is_alcoholic:
-            # остання спроба без вимоги різних партнерів (рідкісний кейс)
             cs = [uid for uid in order
                   if pair_count(uid) < MAX_PAIR_SLOTS and task.id not in task_ids_of(uid)]
             if len(cs) >= 2:
@@ -209,9 +193,6 @@ def assign_tasks_for_all(db: Session):
                 everyone_paired.add(a_id); everyone_paired.add(b_id)
                 pairs_made += 1
 
-    # Гарантія «>=1 пара кожному»: якщо хтось лишився без T3 (бо завдань було
-    # менше ніж потрібно для покриття всіх) — допаровуємо його, перевикориставши
-    # будь-яке парне завдання, якого в нього ще нема.
     for uid in order:
         if pair_count(uid) == 0:
             partner = None
@@ -233,18 +214,16 @@ def assign_tasks_for_all(db: Session):
 
     db.flush()
 
-    # ===== Крок 2: добиваємо T1/T2 до повної к-ті, гарантуючи типи, без дублів =====
+    # ===== Крок 2: добиваємо T1/T2 =====
     for u in users:
         have = bucket[u.id]
         current_ids = {a.task_id for a in have}
 
-        # гарантований Type1 (якщо ще нема)
         if not any(db.get(Task, a.task_id).type == TaskType.SOLO for a in have):
             t1 = usage.pick(by_type[TaskType.SOLO], exclude_ids=current_ids)
             if t1:
                 have.append(_add(db, u, t1, usage)); current_ids.add(t1.id)
 
-        # гарантований Type2 (якщо ще нема)
         if not any(db.get(Task, a.task_id).type == TaskType.TARGETED for a in have):
             t2 = usage.pick(by_type[TaskType.TARGETED], exclude_ids=current_ids)
             if t2:
@@ -252,12 +231,11 @@ def assign_tasks_for_all(db: Session):
                                  target=_random_target(u.id, all_users)))
                 current_ids.add(t2.id)
 
-        # доповнюємо рандомом з {T1,T2} — без дублів, з пріоритетом покриття
         fill_pool = by_type[TaskType.SOLO] + by_type[TaskType.TARGETED]
         while len(have) < TASKS_PER_USER:
             t = usage.pick(fill_pool, exclude_ids=current_ids)
             if t is None:
-                break  # пул вичерпано (малоймовірно при достатній к-ті завдань)
+                break
             target = _random_target(u.id, all_users) if t.type == TaskType.TARGETED else None
             have.append(_add(db, u, t, usage, target=target))
             current_ids.add(t.id)
@@ -277,7 +255,6 @@ def assign_tasks_for_latecomer(db: Session, user: User):
     """Миттєве призначення тасок латекомеру. Тільки Type1/Type2, без дублів."""
     by_type = _pool(db)
     all_users = db.query(User).all()
-    # лічильник стартує з нуля локально (латекомер один, рівномірність у межах нього)
     usage = Usage(by_type[TaskType.SOLO] + by_type[TaskType.TARGETED])
     fill_pool = by_type[TaskType.SOLO] + by_type[TaskType.TARGETED]
 

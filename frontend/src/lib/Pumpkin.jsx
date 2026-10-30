@@ -121,16 +121,13 @@ export default function Pumpkin({ value, announce, className = '' }) {
             <path d="M285 297 L315 297 L300 272 Z" fill={DARK} />
           </g>
           <g className="pk-mouth">
-            <path d="M128 312 Q300 296 472 312 L466 498 Q300 520 134 498 Z" fill="#ffd27a" />
-            <path d="M136 318 Q300 303 464 318 L458 492 Q300 512 142 492 Z" fill="url(#pk-maw)" />
-            {/* upper teeth */}
+            {/* the opening itself: teeth are just uncut pumpkin, the light rim
+                follows the cut edge (zigzag teeth included), not a box around it */}
             <path d="M136 318 L156 352 L176 314 L196 346 L218 312 L238 340 L262 310 L282 338 L300 309
-                     L318 338 L338 310 L362 340 L382 312 L404 346 L424 314 L444 352 L464 318 Q300 303 136 318 Z"
-              fill="url(#pk-body)" stroke="#ffd27a" strokeWidth="3" strokeLinejoin="round" />
-            {/* lower teeth */}
-            <path d="M142 492 L160 462 L180 496 L204 468 L226 500 L250 472 L274 503 L300 474
-                     L326 503 L350 472 L374 500 L396 468 L420 496 L440 462 L458 492 Q300 512 142 492 Z"
-              fill="url(#pk-body)" stroke="#ffd27a" strokeWidth="3" strokeLinejoin="round" />
+                     L318 338 L338 310 L362 340 L382 312 L404 346 L424 314 L444 352 L464 318
+                     L458 492 L440 462 L420 496 L396 468 L374 500 L350 472 L326 503 L300 474
+                     L274 503 L250 472 L226 500 L204 468 L180 496 L160 462 L142 492 Z"
+              fill="url(#pk-maw)" stroke="#ffd27a" strokeWidth="5" strokeLinejoin="round" />
           </g>
           <g className="pk-name" filter="url(#pk-text-glow)">
             <text x="300" y="418" textAnchor="middle" fontFamily='"Bricolage Grotesque", system-ui, sans-serif'

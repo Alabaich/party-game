@@ -144,7 +144,9 @@ async def download_proxy(url: str):
     filename = (path.split("/")[-1] or "download").replace('"', "")
     async with httpx.AsyncClient() as client:
         try:
-            r = await client.get(url, timeout=60)
+            # r2.dev may refuse non-browser user agents
+            r = await client.get(url, timeout=60,
+                                 headers={"User-Agent": "Mozilla/5.0 (party-game download proxy)"})
         except httpx.HTTPError:
             raise HTTPException(502, "Storage is unavailable")
         if r.status_code != 200:

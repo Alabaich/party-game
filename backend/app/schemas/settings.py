@@ -65,8 +65,8 @@ class ConsentSettings(BaseModel):
     enabled: bool = True
     title: str = Field(default="Photo & Media Release", max_length=200)
     summary: str = Field(
-        default="Photos and videos from this game may be shown on screen at the event, "
-                "shared on social media and used in marketing and advertising.",
+        default="Photos and videos you upload will be shown on the big screen during the "
+                "event, and may be shared on social media and used in marketing and advertising.",
         max_length=1000)
     body: str = Field(default=DEFAULT_CONSENT_BODY, max_length=30000)
     checkbox_label: str = Field(

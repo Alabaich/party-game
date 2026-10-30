@@ -2,7 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { api, uploadAndComplete, freeUpload, store, downloadUrl } from '../lib/api'
 import {
-  useTheme, fmtDuration, Center, Prizes, Modal, TYPE_LABEL, TYPE_COLOR, THEME_EMOJI,
+  useTheme, fmtDuration, Center, Prizes, Modal, PhotoNotice, TYPE_LABEL, TYPE_COLOR, THEME_EMOJI,
 } from '../lib/ui'
 
 export default function Dashboard() {
@@ -210,6 +210,7 @@ export default function Dashboard() {
           <div className="animate-float text-5xl mb-4">⏳</div>
           <p className="font-display font-extrabold text-3xl text-zest mb-2">Waiting to start</p>
           <p className="text-cream/50 text-sm mb-8">The game will begin when the host gives the go</p>
+          <PhotoNotice settings={game.settings} className="text-left mb-8" />
           {prizes.some((p) => p.title) && (
             <div className="text-left mb-8">
               <p className="text-mint tracking-widest text-xs mb-3">PRIZES — FASTEST TO FINISH ALL TASKS</p>
@@ -288,7 +289,8 @@ export default function Dashboard() {
           {data.wildcards.length > 0 && (
             <p className="text-cream/50 text-xs text-center mt-4">🃏 Wildcards left: {data.wildcards_left}</p>
           )}
-          <p className="text-cream/40 text-xs text-center mt-6">
+          <PhotoNotice settings={game.settings} className="mt-6" />
+          <p className="text-cream/40 text-xs text-center mt-4">
             Tap a task to upload a photo or video as proof. Paired tasks close for both of you.
           </p>
         </>

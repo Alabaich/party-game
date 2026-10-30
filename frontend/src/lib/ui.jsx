@@ -74,3 +74,21 @@ export function Prizes({ prizes, compact }) {
     </div>
   )
 }
+
+// Tells players where their photos go, based on the game's gallery setting.
+export function PhotoNotice({ settings, className = '' }) {
+  const hasEmail = settings.questions.some((q) => q.kind === 'email')
+  return (
+    <div className={`card px-4 py-3 text-sm text-cream/80 ${className}`}>
+      <p>📺 Your photos and videos appear on the <b className="text-cream">big screen</b> during the party.</p>
+      {settings.gallery === 'public' ? (
+        <p className="mt-1 text-cream/60">Everyone with the game link can also see them in the gallery.</p>
+      ) : (
+        <p className="mt-1 text-cream/60">
+          There's no public gallery.{' '}
+          {hasEmail ? 'If you leave your email, we\'ll send you the photos after the event.' : 'You can always see your own uploads under 🖼 Mine.'}
+        </p>
+      )}
+    </div>
+  )
+}

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { api, store } from '../lib/api'
-import { useTheme, THEME_EMOJI, Center, Modal, Prizes } from '../lib/ui'
+import { useTheme, THEME_EMOJI, Center, Modal, Prizes, PhotoNotice } from '../lib/ui'
 
 export default function Join() {
   const { code: rawCode } = useParams()
@@ -108,6 +108,7 @@ export default function Join() {
             {s.questions.map((q) => (
               <QuestionField key={q.id} q={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} />
             ))}
+            <PhotoNotice settings={s} />
             {err && <p className="text-punch text-center text-sm">{err}</p>}
             <p className="text-cream/40 text-xs text-center">Changed phones later? Ask the host to send you your link.</p>
             <button disabled={busy} className="btn-primary w-full text-lg">

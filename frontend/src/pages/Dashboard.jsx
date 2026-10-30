@@ -23,6 +23,9 @@ export default function Dashboard() {
   const pickSubId = useRef(null)
   const [wildFor, setWildFor] = useState(null)
   const [myMedia, setMyMedia] = useState(null)
+  // one-time 'before you snap' rules, remembered on this phone
+  const [rulesFor, setRulesFor] = useState(null)
+  const rulesOk = () => { try { return localStorage.getItem('photo_rules_ok') === '1' } catch { return false } }
 
   const load = useCallback(async () => {
     try {
@@ -76,9 +79,24 @@ export default function Dashboard() {
 
   function triggerUpload(assignmentId, substituteId = null) {
     if (uploadingId) return   // one upload at a time
+    if (!rulesOk()) { setRulesFor({ kind: 'task', assignmentId, substituteId }); return }
     pickTargetId.current = assignmentId
     pickSubId.current = substituteId
     fileRef.current?.click()
+  }
+
+  function startFreeUpload() {
+    if (!rulesOk()) { setRulesFor({ kind: 'free' }); return }
+    freeFileRef.current?.click()
+  }
+
+  function acceptRules() {
+    try { localStorage.setItem('photo_rules_ok', '1') } catch { /* ignore */ }
+    const r = rulesFor
+    setRulesFor(null)
+    // still inside the tap, so the browser lets us open the camera / picker
+    if (r?.kind === 'free') freeFileRef.current?.click()
+    else if (r) triggerUpload(r.assignmentId, r.substituteId)
   }
 
   async function openMyMedia() {
@@ -164,7 +182,7 @@ export default function Dashboard() {
         <input ref={freeFileRef} type="file" accept="image/*,video/*" multiple
           className="hidden" onChange={onFreeFiles} />
         <button
-          onClick={() => freeFileRef.current?.click()}
+          onClick={startFreeUpload}
           disabled={freeUploading}
           className="bg-cream/10 border-2 border-cream/20 text-cream font-bold px-6 py-3 rounded-2xl active:scale-95 transition-transform disabled:opacity-50 mb-4">
           {freeUploading ? '⏳ Uploading…' : '📸 Just Upload'}
@@ -182,6 +200,7 @@ export default function Dashboard() {
           </button>
         )}
         {myMedia && <MyMediaModal items={myMedia} onClose={() => setMyMedia(null)} />}
+        {rulesFor && <PhotoRulesModal onAccept={acceptRules} onClose={() => setRulesFor(null)} />}
       </div>
     )
   }
@@ -199,7 +218,7 @@ export default function Dashboard() {
           <h1 className="font-display font-extrabold text-3xl text-zest mt-1">Hi, {data.user.name}!</h1>
         </div>
         <div className="flex gap-2 text-sm shrink-0">
-          <button onClick={() => freeFileRef.current?.click()} disabled={freeUploading}
+          <button onClick={startFreeUpload} disabled={freeUploading}
             className="bg-cream/10 px-3 py-2.5 rounded-2xl disabled:opacity-50 leading-tight">
             {freeUploading ? '⏳' : <>📸<br />Share</>}
           </button>
@@ -329,6 +348,7 @@ export default function Dashboard() {
       )}
 
       {myMedia && <MyMediaModal items={myMedia} onClose={() => setMyMedia(null)} />}
+      {rulesFor && <PhotoRulesModal onAccept={acceptRules} onClose={() => setRulesFor(null)} />}
 
       {viewing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 px-4"
@@ -375,6 +395,22 @@ function MyMediaModal({ items, onClose }) {
         ))}
       </div>
       <button onClick={onClose} className="btn-ghost w-full mt-4">Close</button>
+    </Modal>
+  )
+}
+
+function PhotoRulesModal({ onAccept, onClose }) {
+  return (
+    <Modal onClose={onClose}>
+      <p className="font-display font-extrabold text-2xl text-zest mb-3">📸 Before you snap</p>
+      <ul className="space-y-2.5 text-base leading-snug text-cream/90 mb-5">
+        <li>🙋 Ask the person first, every time.</li>
+        <li>🎃 Only photograph people who are playing.</li>
+        <li>🧒 No photos of children unless they're yours or their parents agree.</li>
+        <li>📺 Photos show on the big screen, so keep it friendly.</li>
+      </ul>
+      <button onClick={onAccept} className="btn-cta font-display text-lg">Got it, let's go</button>
+      <button onClick={onClose} className="w-full text-cream/70 text-base py-3">Not now</button>
     </Modal>
   )
 }

@@ -306,7 +306,7 @@ export default function Screen() {
             )}
             <Rule emoji="🎯" title={`Complete ${n} tasks`}>Each player gets {n} challenges — solo, finding another player, or paired with a partner. A great way to meet your neighbours!</Rule>
             <Rule emoji="📸" title="Upload proof">Every completed task needs photo or video evidence. Tap 📷 Add photo under the task.</Rule>
-            <Rule emoji="🙋" title="Ask before you snap">Only photograph people who are playing, and no photos of kids unless they're yours.</Rule>
+            <Rule emoji="🙋" title="Ask before you snap">Only photograph people who are playing, and no photos of kids unless they're yours or their parents agree.</Rule>
             <Rule emoji="⚡" title="Fastest wins">The timer starts when the game begins. Finish all {n} tasks as fast as possible.</Rule>
             <Rule emoji="🤝" title="Paired tasks">When one partner uploads proof — the task closes for both automatically.</Rule>
             <Rule emoji="🃏" title="Can't do a task?">Tap <span className="text-zest font-bold">Can't do this one?</span> under the task and complete a wildcard instead.</Rule>

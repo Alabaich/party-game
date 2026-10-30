@@ -134,7 +134,7 @@ export function LogoRow({ logos, className = '' }) {
   )
 }
 
-export const PHOTO_RULE = "Ask before you snap. Only photograph people who are playing, and no photos of kids unless they're yours."
+export const PHOTO_RULE = "Ask before you snap. Only photograph people who are playing, and no photos of kids unless they're yours or their parents agree."
 
 export function PhotoRule({ className = '' }) {
   return (

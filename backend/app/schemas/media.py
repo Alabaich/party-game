@@ -28,3 +28,4 @@ class UploadedFile(BaseModel):
 
 class CompleteTaskIn(BaseModel):
     files: list[UploadedFile]
+    substitute_task_id: int | None = None   # wildcard done instead of this task

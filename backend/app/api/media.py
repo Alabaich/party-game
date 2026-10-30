@@ -9,6 +9,7 @@ from ..models import (
 )
 from ..config import settings
 from ..services import views
+from ..schemas.settings import load_settings
 from ..services.storage import upload_file_to_r2
 
 router = APIRouter()
@@ -38,6 +39,18 @@ def complete_task(user_id: str, assignment_id: int,
         raise HTTPException(404, "Assignment not found")
     if not payload.files:
         raise HTTPException(400, "Upload at least one photo or video")
+    if payload.substitute_task_id and payload.substitute_task_id != a.substitute_task_id:
+        user = db.get(User, user_id)
+        game = db.get(Game, user.game_id)
+        sub = db.get(Task, payload.substitute_task_id)
+        if not sub or not sub.is_universal or sub.game_id != game.id:
+            raise HTTPException(400, "Not a wildcard task of this game")
+        used = (db.query(Assignment.id)
+                .filter(Assignment.user_id == user_id, Assignment.substitute_task_id.isnot(None),
+                        Assignment.id != a.id).count())
+        if used >= load_settings(game.settings).max_wildcards:
+            raise HTTPException(400, "No wildcards left")
+        a.substitute_task_id = sub.id
 
     db.query(Media).filter(Media.assignment_id == assignment_id).delete()
     for f in payload.files:

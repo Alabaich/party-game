@@ -18,6 +18,13 @@ def current_account(request: Request, db: Session = Depends(get_db)) -> Account:
     return acc
 
 
+def optional_account(request: Request, db: Session = Depends(get_db)) -> Account | None:
+    try:
+        return current_account(request, db)
+    except HTTPException:
+        return None
+
+
 def owned_game(game_id: str, acc: Account = Depends(current_account),
                db: Session = Depends(get_db)) -> Game:
     game = db.get(Game, game_id)

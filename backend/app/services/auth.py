@@ -47,3 +47,9 @@ def read_token(token: str | None) -> str | None:
     if not hmac.compare_digest(sig, _sign(payload)) or int(exp) < time.time():
         return None
     return account_id
+
+
+def player_key(user_id: str) -> str:
+    """Public stand-in for a player's id. The real id opens their page, so it
+    must never appear in lists other people can see."""
+    return hmac.new(_SECRET, b"player:" + user_id.encode(), hashlib.sha256).hexdigest()[:16]

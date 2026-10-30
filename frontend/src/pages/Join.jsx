@@ -15,8 +15,6 @@ export default function Join() {
   const [name, setName] = useState('')
   const [answers, setAnswers] = useState({})
   const [busy, setBusy] = useState(false)
-  const [showPick, setShowPick] = useState(false)
-  const [players, setPlayers] = useState([])
   useTheme(game?.settings.theme)
 
   useEffect(() => {
@@ -72,10 +70,6 @@ export default function Join() {
     } finally { setBusy(false) }
   }
 
-  async function openPick() {
-    setShowPick(true)
-    try { setPlayers(await api.players(code)) } catch { /* ignore */ }
-  }
 
   return (
     <div className="relative z-10 min-h-screen flex flex-col items-center px-6 py-10 text-cream font-body">
@@ -115,6 +109,7 @@ export default function Join() {
               <QuestionField key={q.id} q={q} value={answers[q.id]} onChange={(v) => setAnswer(q.id, v)} />
             ))}
             {err && <p className="text-punch text-center text-sm">{err}</p>}
+            <p className="text-cream/40 text-xs text-center">Changed phones later? Ask the host to send you your link.</p>
             <button disabled={busy} className="btn-primary w-full text-lg">
               {busy ? 'Joining…' : `Join the game ${emoji}`}
             </button>
@@ -134,9 +129,6 @@ export default function Join() {
           </div>
         )}
 
-        <button onClick={openPick} className="w-full text-cream/40 text-sm underline underline-offset-4 pt-2">
-          Already joined on another phone?
-        </button>
       </div>
 
       {showDoc && (
@@ -150,21 +142,6 @@ export default function Join() {
         </Modal>
       )}
 
-      {showPick && (
-        <Modal onClose={() => setShowPick(false)}>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="font-display font-bold text-xl text-zest">Pick yourself</h2>
-            <button onClick={() => setShowPick(false)} className="text-cream/50 text-2xl">×</button>
-          </div>
-          {players.length === 0 && <p className="text-cream/50 text-sm">No players yet</p>}
-          <div className="space-y-2">
-            {players.map((p) => (
-              <button key={p.id} onClick={() => { store.setPlayer(code, p.id); nav(`/u/${p.id}`) }}
-                className="w-full text-left bg-cream/5 hover:bg-cream/10 rounded-xl px-4 py-3">{p.name}</button>
-            ))}
-          </div>
-        </Modal>
-      )}
     </div>
   )
 }
@@ -178,6 +155,10 @@ function QuestionField({ q, value, onChange }) {
           <option value="" disabled>Choose…</option>
           {q.options.map((o) => <option key={o} value={o}>{o}</option>)}
         </select>
+      )}
+      {q.kind === 'email' && (
+        <input type="email" value={value ?? ''} maxLength={200} autoComplete="email"
+          placeholder="you@example.com" onChange={(e) => onChange(e.target.value)} className="field text-lg" />
       )}
       {q.kind === 'text' && (
         <input value={value ?? ''} maxLength={q.numeric ? 6 : 100}

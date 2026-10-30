@@ -20,12 +20,14 @@ class Assignment(Base):
         Enum(AssignmentStatus), nullable=False, default=AssignmentStatus.pending
     )
     completed_at = Column(DateTime, nullable=True)
+    # set when the player completed a wildcard task instead of this one
+    substitute_task_id = Column(Integer, ForeignKey("tasks.id"), nullable=True)
 
     user = relationship(
         "User", back_populates="assignments", foreign_keys=[user_id]
     )
     target_user = relationship("User", foreign_keys=[target_user_id])
-    task = relationship("Task")
+    task = relationship("Task", foreign_keys=[task_id])
     media = relationship(
         "Media", back_populates="assignment", cascade="all, delete-orphan"
     )

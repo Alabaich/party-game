@@ -9,6 +9,7 @@ from ..models import (
 from ..schemas.settings import load_settings
 from .text import render_task
 from .consent import current_consent_hash
+from .auth import player_key
 
 
 def player_count(db: Session, game: Game) -> int:
@@ -52,7 +53,9 @@ def target_hint(game: Game, user: User | None) -> str | None:
 def assignment_out(db: Session, game: Game, a: Assignment) -> schemas.AssignmentOut:
     t = db.get(Task, a.task_id)
     tgt = db.get(User, a.target_user_id) if a.target_user_id else None
+    sub = db.get(Task, a.substitute_task_id) if a.substitute_task_id else None
     return schemas.AssignmentOut(
+        substitute_description=sub.description if sub else None,
         id=a.id, task_id=a.task_id,
         description=render_task(t.description, tgt.name if tgt else None),
         type=t.type, is_alcoholic=t.is_alcoholic,
@@ -62,7 +65,7 @@ def assignment_out(db: Session, game: Game, a: Assignment) -> schemas.Assignment
     )
 
 
-def leaderboard(db: Session, game: Game) -> list[schemas.LeaderboardItem]:
+def leaderboard(db: Session, game: Game, public: bool = True) -> list[schemas.LeaderboardItem]:
     users = db.query(User).filter(User.game_id == game.id).all()
     counts: dict[str, list[int]] = {u.id: [0, 0] for u in users}
     rows = (db.query(Assignment.user_id, Assignment.status, func.count())
@@ -82,7 +85,8 @@ def leaderboard(db: Session, game: Game) -> list[schemas.LeaderboardItem]:
         if finished and u.completed_at and game.started_at:
             duration = int((u.completed_at - game.started_at).total_seconds())
         items.append(schemas.LeaderboardItem(
-            user_id=u.id, name=u.name, completed_count=done, total=total,
+            user_id=player_key(u.id) if public else u.id,
+            name=u.name, completed_count=done, total=total,
             finished=finished, completed_at=u.completed_at if finished else None,
             duration_seconds=duration, is_winner=False,
         ))
@@ -94,7 +98,8 @@ def leaderboard(db: Session, game: Game) -> list[schemas.LeaderboardItem]:
     return finished_list + in_progress
 
 
-def slideshow(db: Session, game: Game, include_hidden: bool = False) -> list[schemas.SlideItem]:
+def slideshow(db: Session, game: Game, include_hidden: bool = False,
+              only_user: str | None = None) -> list[schemas.SlideItem]:
     out = []
     names = {u.id: u.name for u in db.query(User).filter(User.game_id == game.id)}
     q = (db.query(Media, Assignment)
@@ -103,9 +108,11 @@ def slideshow(db: Session, game: Game, include_hidden: bool = False) -> list[sch
          .filter(User.game_id == game.id))
     if not include_hidden:
         q = q.filter(Media.hidden == False)  # noqa: E712
+    if only_user:
+        q = q.filter(Assignment.user_id == only_user)
     tasks = {t.id: t for t in db.query(Task).filter(Task.game_id == game.id)}
     for m, a in q.all():
-        t = tasks.get(a.task_id)
+        t = tasks.get(a.substitute_task_id or a.task_id)
         desc = render_task(t.description, names.get(a.target_user_id)) if t else None
         out.append(schemas.SlideItem(
             id=f"assignment-{a.id}-{m.id}", media_id=m.id,
@@ -117,6 +124,8 @@ def slideshow(db: Session, game: Game, include_hidden: bool = False) -> list[sch
           .filter(User.game_id == game.id))
     if not include_hidden:
         fq = fq.filter(FreeMedia.hidden == False)  # noqa: E712
+    if only_user:
+        fq = fq.filter(FreeMedia.user_id == only_user)
     for fm in fq.all():
         out.append(schemas.SlideItem(
             id=f"free-{fm.id}", media_id=fm.id,

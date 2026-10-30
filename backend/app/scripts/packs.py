@@ -1,7 +1,8 @@
 """Task packs a host can load into a game.
 
 Each task: (description, type, is_alcoholic). Use {target} for the other
-player in TARGETED / PAIRED tasks.
+player in TARGETED / PAIRED tasks. Each pack also has WILDCARDS: tasks a
+player can do instead of any task they can't complete.
 """
 from ..models import TaskType
 
@@ -119,8 +120,15 @@ BIRTHDAY = [
     ("You and {target}: one delivers a toast to 5 people — the other photographs their confused faces.", P, True),
 ]
 
+WILDCARDS = [
+    "Take a NEW group photo with at least 4 people you didn't know before today, all looking at the camera.",
+    "Record a 10-second video with 3 neighbours waving and saying hi to the camera together.",
+]
+
 PACKS = {
-    "halloween": ("🎃 Halloween — meet your neighbours", HALLOWEEN),
-    "diwali": ("🪔 Diwali — festival of lights", DIWALI),
-    "party": ("🎉 House party (original birthday set)", BIRTHDAY),
+    "halloween": ("🎃 Halloween — meet your neighbours", HALLOWEEN, WILDCARDS),
+    "diwali": ("🪔 Diwali — festival of lights", DIWALI, WILDCARDS),
+    "party": ("🎉 House party (original birthday set)", BIRTHDAY, [
+        "Take a unique group photo with several people all looking at the camera.",
+    ]),
 }

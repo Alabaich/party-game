@@ -117,7 +117,7 @@ def reveal(game: Game = Depends(owned_game), db: Session = Depends(get_db)):
 
 @router.get("/games/{game_id}/players", response_model=list[schemas.PlayerAdminOut])
 def players(game: Game = Depends(owned_game), db: Session = Depends(get_db)):
-    lb = {i.user_id: i for i in views.leaderboard(db, game)}
+    lb = {i.user_id: i for i in views.leaderboard(db, game, public=False)}
     users = db.query(User).filter(User.game_id == game.id).order_by(User.joined_at).all()
     return [schemas.PlayerAdminOut(
         id=u.id, name=u.name, answers=u.answers, is_latecomer=u.is_latecomer,
@@ -156,14 +156,14 @@ def consent_document(sha256: str, game: Game = Depends(owned_game), db: Session 
 
 @router.get("/games/{game_id}/leaderboard", response_model=list[schemas.LeaderboardItem])
 def admin_leaderboard(game: Game = Depends(owned_game), db: Session = Depends(get_db)):
-    return views.leaderboard(db, game)
+    return views.leaderboard(db, game, public=False)
 
 
 # ---------- tasks ----------
 
 @router.get("/packs", response_model=list[schemas.PackOut])
 def packs(_: Account = Depends(current_account)):
-    return [schemas.PackOut(id=k, title=v[0], task_count=len(v[1])) for k, v in PACKS.items()]
+    return [schemas.PackOut(id=k, title=v[0], task_count=len(v[1]) + len(v[2])) for k, v in PACKS.items()]
 
 
 def _tasks_out(db: Session, game: Game) -> list[schemas.TaskOut]:
@@ -171,8 +171,12 @@ def _tasks_out(db: Session, game: Game) -> list[schemas.TaskOut]:
                 .join(Task, Task.id == Assignment.task_id)
                 .filter(Task.game_id == game.id).group_by(Assignment.task_id).all())
     tasks = db.query(Task).filter(Task.game_id == game.id).order_by(Task.type, Task.id).all()
+    subs = dict(db.query(Assignment.substitute_task_id, func.count())
+                .join(Task, Task.id == Assignment.substitute_task_id)
+                .filter(Task.game_id == game.id).group_by(Assignment.substitute_task_id).all())
     return [schemas.TaskOut(id=t.id, description=t.description, type=t.type,
-                            is_alcoholic=t.is_alcoholic, assigned_count=used.get(t.id, 0))
+                            is_alcoholic=t.is_alcoholic, is_universal=t.is_universal,
+                            assigned_count=used.get(t.id, 0) + subs.get(t.id, 0))
             for t in tasks]
 
 
@@ -202,7 +206,11 @@ def edit_task(task_id: int, payload: schemas.TaskIn, game: Game = Depends(owned_
     t = _own_task(db, game, task_id)
     if game.tasks_assigned and payload.type != t.type:
         raise HTTPException(409, "Task type can't change after the start")
+    if game.tasks_assigned and payload.is_universal != t.is_universal and \
+            db.query(Assignment.id).filter(Assignment.task_id == t.id).first():
+        raise HTTPException(409, "This task is already assigned; it can't become a wildcard")
     t.description, t.type, t.is_alcoholic = payload.description, payload.type, payload.is_alcoholic
+    t.is_universal = payload.is_universal
     db.commit()
     return _tasks_out(db, game)
 
@@ -210,7 +218,8 @@ def edit_task(task_id: int, payload: schemas.TaskIn, game: Game = Depends(owned_
 @router.delete("/games/{game_id}/tasks/{task_id}", response_model=list[schemas.TaskOut])
 def delete_task(task_id: int, game: Game = Depends(owned_game), db: Session = Depends(get_db)):
     t = _own_task(db, game, task_id)
-    if db.query(Assignment.id).filter(Assignment.task_id == t.id).first():
+    if db.query(Assignment.id).filter((Assignment.task_id == t.id) |
+                                      (Assignment.substitute_task_id == t.id)).first():
         raise HTTPException(409, "This task is already assigned to players")
     db.delete(t)
     db.commit()

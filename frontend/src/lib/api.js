@@ -30,7 +30,9 @@ export const api = {
   leaderboard: (code) => jfetch(`/g/${code}/leaderboard`),
   slideshow: (code) => jfetch(`/g/${code}/slideshow`),
   dashboard: (uuid) => jfetch(`/u/${uuid}`),
-  complete: (uuid, aid, files) => post(`/u/${uuid}/assignments/${aid}/complete`, { files }),
+  complete: (uuid, aid, files, substitute_task_id) =>
+    post(`/u/${uuid}/assignments/${aid}/complete`, { files, substitute_task_id: substitute_task_id || null }),
+  myMedia: (uuid) => jfetch(`/u/${uuid}/media`),
 }
 
 export const host = {
@@ -78,10 +80,10 @@ export async function uploadFile(uuid, assignmentId, file) {
   return { public_url, media_type }
 }
 
-export async function uploadAndComplete(uuid, assignmentId, fileList) {
+export async function uploadAndComplete(uuid, assignmentId, fileList, substituteTaskId) {
   const files = []
   for (const f of Array.from(fileList)) files.push(await uploadFile(uuid, assignmentId, f))
-  return api.complete(uuid, assignmentId, files)
+  return api.complete(uuid, assignmentId, files, substituteTaskId)
 }
 
 export const freeUpload = (uuid, file) => uploadForm(`/u/${uuid}/free-upload`, file)

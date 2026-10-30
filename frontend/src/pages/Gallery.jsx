@@ -143,12 +143,13 @@ export default function Gallery() {
   const [slides, setSlides] = useState([])
   const [selected, setSelected] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [locked, setLocked] = useState(false)
 
   const load = useCallback(async () => {
     try {
-      const [g, items] = await Promise.all([api.game(code), api.slideshow(code)])
-      setGame(g); setSlides(items)
-    } catch { /* ignore */ }
+      setGame(await api.game(code))
+      setSlides(await api.slideshow(code))
+    } catch (e) { if (e.status === 403) setLocked(true) }
     finally { setLoading(false) }
   }, [code])
   useTheme(game?.settings.theme)
@@ -157,6 +158,9 @@ export default function Gallery() {
 
   return (
     <div className="relative z-10 min-h-screen text-cream font-body px-4 py-6 max-w-4xl mx-auto">
+      {locked && (
+        <p className="text-cream/60 text-center py-20">🔒 Photos from this game are private.<br />They're shown on the screen at the event.</p>
+      )}
       <header className="flex items-center justify-between mb-6">
         <h1 className="font-display font-extrabold text-3xl text-zest">📷 {game?.name || 'Gallery'}</h1>
         <Link to={`/g/${code}/screen`} className="bg-cream/10 px-3 py-2 rounded-xl text-xs">🏆 Leaderboard</Link>

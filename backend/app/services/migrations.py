@@ -27,6 +27,8 @@ UPGRADES = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS consent_document_id INTEGER REFERENCES consent_documents(id)",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS consent_ip VARCHAR",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS consent_user_agent VARCHAR",
+    "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS is_universal BOOLEAN NOT NULL DEFAULT FALSE",
+    "ALTER TABLE assignments ADD COLUMN IF NOT EXISTS substitute_task_id INTEGER REFERENCES tasks(id)",
     "CREATE INDEX IF NOT EXISTS ix_users_game_id ON users (game_id)",
     "CREATE INDEX IF NOT EXISTS ix_tasks_game_id ON tasks (game_id)",
     "CREATE INDEX IF NOT EXISTS ix_assignments_user_id ON assignments (user_id)",

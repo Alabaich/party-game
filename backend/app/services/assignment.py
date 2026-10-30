@@ -20,6 +20,7 @@
 """
 import uuid
 import random
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from ..models import (
     User, Task, Assignment, Game, TaskType, AssignmentStatus
@@ -30,7 +31,8 @@ from ..schemas.settings import load_settings
 # --------- helpers ---------
 
 def _pool(db: Session, game: Game):
-    tasks = db.query(Task).filter(Task.game_id == game.id).all()
+    tasks = db.query(Task).filter(Task.game_id == game.id,
+                                  Task.is_universal == False).all()  # noqa: E712
     if not load_settings(game.settings).alcohol_tasks:
         tasks = [t for t in tasks if not t.is_alcoholic]
     by_type = {TaskType.SOLO: [], TaskType.TARGETED: [], TaskType.PAIRED: []}
@@ -39,15 +41,42 @@ def _pool(db: Session, game: Game):
     return by_type
 
 
-def _random_target(user_id: str, all_users: list[User]) -> str | None:
-    others = [u for u in all_users if u.id != user_id]
-    return random.choice(others).id if others else None
+class Targets:
+    """Picks who a TARGETED task points at: the person targeted least so far
+    (ties random), so everyone gets found about equally often."""
+    def __init__(self, db: Session, game: Game, all_users: list[User]):
+        self.ids = [u.id for u in all_users]
+        self.count = {uid: 0 for uid in self.ids}
+        rows = (db.query(Assignment.target_user_id)
+                .join(User, User.id == Assignment.user_id)
+                .filter(User.game_id == game.id, Assignment.pair_id.is_(None),
+                        Assignment.target_user_id.isnot(None)).all())
+        for (tid,) in rows:
+            if tid in self.count:
+                self.count[tid] += 1
+
+    def pick(self, user_id: str, avoid: set[str] = frozenset()) -> str | None:
+        others = [i for i in self.ids if i != user_id and i not in avoid] or \
+                 [i for i in self.ids if i != user_id]
+        if not others:
+            return None
+        low = min(self.count[i] for i in others)
+        tid = random.choice([i for i in others if self.count[i] == low])
+        self.count[tid] += 1
+        return tid
 
 
 class Usage:
-    """Глобальний лічильник використань завдань — для рівномірного покриття."""
-    def __init__(self, all_tasks: list[Task]):
+    """Глобальний лічильник використань завдань — для рівномірного покриття.
+    Стартує з того, що вже роздано в грі, щоб латекомери не ламали рівномірність."""
+    def __init__(self, all_tasks: list[Task], db: Session | None = None):
         self.count = {t.id: 0 for t in all_tasks}
+        if db is not None and all_tasks:
+            rows = (db.query(Assignment.task_id, func.count())
+                    .filter(Assignment.task_id.in_(list(self.count)))
+                    .group_by(Assignment.task_id).all())
+            for tid, n in rows:
+                self.count[tid] = n
 
     def bump(self, task_id: int):
         self.count[task_id] = self.count.get(task_id, 0) + 1
@@ -122,6 +151,7 @@ def assign_tasks_for_all(db: Session, game: Game):
         return
 
     all_users = db.query(User).filter(User.game_id == game.id).all()
+    targets = Targets(db, game, all_users)
     bucket: dict[str, list[Assignment]] = {u.id: [] for u in users}
     partners: dict[str, set[str]] = {u.id: set() for u in users}
     user_by_id = {u.id: u for u in users}
@@ -231,7 +261,7 @@ def assign_tasks_for_all(db: Session, game: Game):
             t2 = usage.pick(by_type[TaskType.TARGETED], exclude_ids=current_ids)
             if t2:
                 have.append(_add(db, u, t2, usage,
-                                 target=_random_target(u.id, all_users)))
+                                 target=targets.pick(u.id, partners[u.id])))
                 current_ids.add(t2.id)
 
         fill_pool = by_type[TaskType.SOLO] + by_type[TaskType.TARGETED]
@@ -239,7 +269,8 @@ def assign_tasks_for_all(db: Session, game: Game):
             t = usage.pick(fill_pool, exclude_ids=current_ids)
             if t is None:
                 break
-            target = _random_target(u.id, all_users) if t.type == TaskType.TARGETED else None
+            target = (targets.pick(u.id, partners[u.id] | {x.target_user_id for x in have})
+                      if t.type == TaskType.TARGETED else None)
             have.append(_add(db, u, t, usage, target=target))
             current_ids.add(t.id)
 
@@ -259,7 +290,8 @@ def assign_tasks_for_latecomer(db: Session, game: Game, user: User):
     TASKS_PER_USER = game.tasks_per_user
     by_type = _pool(db, game)
     all_users = db.query(User).filter(User.game_id == game.id).all()
-    usage = Usage(by_type[TaskType.SOLO] + by_type[TaskType.TARGETED])
+    targets = Targets(db, game, all_users)
+    usage = Usage(by_type[TaskType.SOLO] + by_type[TaskType.TARGETED], db)
     fill_pool = by_type[TaskType.SOLO] + by_type[TaskType.TARGETED]
 
     have: list[Assignment] = []
@@ -271,14 +303,15 @@ def assign_tasks_for_latecomer(db: Session, game: Game, user: User):
     t2 = usage.pick(by_type[TaskType.TARGETED], exclude_ids=current_ids)
     if t2:
         have.append(_add(db, user, t2, usage,
-                         target=_random_target(user.id, all_users)))
+                         target=targets.pick(user.id)))
         current_ids.add(t2.id)
 
     while len(have) < TASKS_PER_USER:
         t = usage.pick(fill_pool, exclude_ids=current_ids)
         if t is None:
             break
-        target = _random_target(user.id, all_users) if t.type == TaskType.TARGETED else None
+        target = (targets.pick(user.id, {x.target_user_id for x in have})
+                  if t.type == TaskType.TARGETED else None)
         have.append(_add(db, user, t, usage, target=target))
         current_ids.add(t.id)
 

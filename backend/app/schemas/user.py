@@ -20,11 +20,8 @@ class UserOut(BaseModel):
 
 
 class PlayerListItem(BaseModel):
-    id: str
+    key: str     # public player key, never the real id
     name: str
-
-    class Config:
-        from_attributes = True
 
 
 class PlayerAdminOut(BaseModel):

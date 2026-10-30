@@ -1,11 +1,13 @@
 """Player and TV-screen endpoints, addressed by the game's short code."""
+import re
 from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy import func
 from sqlalchemy.orm import Session
-from .deps import get_db
+from .deps import get_db, optional_account
 from .. import schemas
-from ..models import Game, User
+from ..models import Account, Game, User
+from ..services.auth import player_key
 from ..schemas.settings import load_settings
 from ..services.assignment import assign_tasks_for_latecomer
 from ..services.codes import normalize_code
@@ -60,6 +62,14 @@ def register(payload: schemas.RegisterIn, request: Request,
                 if q.required:
                     raise HTTPException(400, f"Please answer: {q.text}")
                 continue
+        elif q.kind == "email":
+            value = str(value or "").strip()[:200]
+            if value and not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value):
+                raise HTTPException(400, "Please enter a valid email")
+            if not value:
+                if q.required:
+                    raise HTTPException(400, f"Please answer: {q.text}")
+                continue
         elif q.kind == "text":
             value = str(value or "").strip()[:200]
             if q.numeric and value and not value.isdigit():
@@ -97,7 +107,8 @@ def register(payload: schemas.RegisterIn, request: Request,
 
 @router.get("/players", response_model=list[schemas.PlayerListItem])
 def players(game: Game = Depends(game_by_code), db: Session = Depends(get_db)):
-    return db.query(User).filter(User.game_id == game.id).order_by(User.name).all()
+    users = db.query(User).filter(User.game_id == game.id).order_by(User.name).all()
+    return [schemas.PlayerListItem(key=player_key(u.id), name=u.name) for u in users]
 
 
 @router.get("/leaderboard", response_model=list[schemas.LeaderboardItem])
@@ -106,5 +117,9 @@ def leaderboard(game: Game = Depends(game_by_code), db: Session = Depends(get_db
 
 
 @router.get("/slideshow", response_model=list[schemas.SlideItem])
-def slideshow(game: Game = Depends(game_by_code), db: Session = Depends(get_db)):
+def slideshow(game: Game = Depends(game_by_code), db: Session = Depends(get_db),
+              acc: Account | None = Depends(optional_account)):
+    if load_settings(game.settings).gallery != "public" and \
+            not (acc and acc.id == game.account_id):
+        raise HTTPException(403, "Photos from this game are private")
     return views.slideshow(db, game)

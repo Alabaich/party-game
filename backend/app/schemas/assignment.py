@@ -18,10 +18,19 @@ class AssignmentOut(BaseModel):
     status: AssignmentStatus
     completed_at: datetime | None
     media: list[MediaOut]
+    substitute_description: str | None = None   # wildcard done instead
+
+
+class Wildcard(BaseModel):
+    id: int
+    description: str
 
 
 class DashboardOut(BaseModel):
     user: UserOut
+    user_key: str
     game: GamePublicOut
+    wildcards: list[Wildcard] = []
+    wildcards_left: int = 0
     players: list[PlayerListItem]
     assignments: list[AssignmentOut]

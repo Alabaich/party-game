@@ -13,5 +13,7 @@ class Task(Base):
     description = Column(Text, nullable=False)
     type = Column(Enum(TaskType), nullable=False)
     is_alcoholic = Column(Boolean, nullable=False, default=False)
+    # wildcard: never assigned; can be done instead of any task a player can't do
+    is_universal = Column(Boolean, nullable=False, default=False)
 
     game = relationship("Game", back_populates="tasks")

@@ -6,7 +6,7 @@ from .media import (
 from .game import (
     LeaderboardItem, GamePublicOut, GameAdminOut, GameCreateIn, GameUpdateIn, PackOut,
 )
-from .assignment import AssignmentOut, DashboardOut
+from .assignment import AssignmentOut, DashboardOut, Wildcard
 from .slideshow import SlideItem
 from .account import SignupIn, LoginIn, AccountOut
 from .settings import GameSettings, Question, Prize

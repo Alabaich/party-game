@@ -168,6 +168,7 @@ function Control({ game, reload }) {
 const QUESTION_PRESETS = [
   ['Building (dropdown)', { kind: 'choice', text: 'Your building', options: ['80 Bond', '100 Bond'], required: true }],
   ['Unit number', { kind: 'text', text: 'Unit number', numeric: true, private: true, required: true }],
+  ['Email for photos (optional)', { kind: 'email', text: 'Want your photos from tonight? Leave your email and we\'ll send them (optional)', private: true, required: false }],
   ['Yes / No', { kind: 'yesno', text: 'New question?', required: true }],
   ['Text', { kind: 'text', text: 'New question?', required: false }],
   ['Drinking alcohol?', { kind: 'alcohol', text: 'Will you be drinking alcohol tonight?', required: true }],
@@ -260,6 +261,7 @@ function Settings({ game, onSaved }) {
               <select value={q.kind} onChange={(e) => setQ(i, { kind: e.target.value })} className="bg-ink border border-cream/25 rounded-lg px-2 py-1">
                 <option value="choice">Dropdown</option>
                 <option value="text">Text / number</option>
+                <option value="email">Email</option>
                 <option value="yesno">Yes / No</option>
                 <option value="alcohol">Alcohol (No = no alcohol tasks)</option>
               </select>
@@ -288,6 +290,21 @@ function Settings({ game, onSaved }) {
         </Field>
         <Toggle checked={s.allow_late_join} onChange={(v) => set({ allow_late_join: v })} label="People can join after the game has started" />
         <Toggle checked={s.alcohol_tasks} onChange={(v) => set({ alcohol_tasks: v })} label="Allow alcohol tasks in this game" />
+        <Field label="Wildcards per player (tasks marked 🃏 can replace any task)">
+          <input type="number" min={0} max={20} value={s.max_wildcards}
+            onChange={(e) => set({ max_wildcards: Number(e.target.value) })} className="field w-28" />
+        </Field>
+      </Section>
+
+      <Section title="Who can see photos" hint="Players can always see and download the photos they uploaded themselves.">
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input type="radio" checked={s.gallery === 'host_only'} onChange={() => set({ gallery: 'host_only' })} className="mt-1 accent-[rgb(var(--c-zest))]" />
+          <span className="text-sm"><b>Host only</b> — the TV screen and slideshow work only in your logged-in browser. No public gallery. Recommended for big or public events, especially with children.</span>
+        </label>
+        <label className="flex items-start gap-3 cursor-pointer">
+          <input type="radio" checked={s.gallery === 'public'} onChange={() => set({ gallery: 'public' })} className="mt-1 accent-[rgb(var(--c-zest))]" />
+          <span className="text-sm"><b>Anyone with the game code</b> — gallery and slideshow open to everyone who has the link. Fine for private parties.</span>
+        </label>
       </Section>
 
       <Section title="Prizes" hint="1, 2, 3 = places by finishing time. Any other label is a special prize you award yourself.">
@@ -357,7 +374,7 @@ function Check({ checked, onChange, label }) {
 function Tasks({ game, reload }) {
   const [tasks, setTasks] = useState([])
   const [packs, setPacks] = useState([])
-  const [draft, setDraft] = useState({ description: '', type: 1, is_alcoholic: false })
+  const [draft, setDraft] = useState({ description: '', type: 1, is_alcoholic: false, is_universal: false })
   const [editing, setEditing] = useState(null)
   const [err, setErr] = useState('')
 
@@ -371,11 +388,14 @@ function Tasks({ game, reload }) {
     try { setTasks(await p); reload() } catch (e) { setErr(e.message) }
   }
 
-  const counts = [1, 2, 3].map((t) => tasks.filter((x) => x.type === t).length)
+  const regular = tasks.filter((x) => !x.is_universal)
+  const counts = [1, 2, 3].map((t) => regular.filter((x) => x.type === t).length)
+  const wild = tasks.length - regular.length
   return (
     <div className="space-y-5">
       <div className="card p-4 text-sm text-cream/70 space-y-1">
-        <p><b className="text-cream">{tasks.length} tasks</b>: {counts[0]} solo · {counts[1]} find-a-person · {counts[2]} paired. Each player gets {game.tasks_per_user}.</p>
+        <p><b className="text-cream">{regular.length} tasks</b>: {counts[0]} solo · {counts[1]} find-a-person · {counts[2]} paired · plus {wild} 🃏 wildcards. Each player gets {game.tasks_per_user}.</p>
+        <p className="text-xs text-cream/50">🃏 Wildcards are never handed out; a player can do one instead of a task they can't complete ({game.settings.max_wildcards} per player, set in Settings).</p>
         <p className="text-xs text-cream/50">Use <code className="text-zest">{'{target}'}</code> for the other person's name in find-a-person and paired tasks. Have at least {game.tasks_per_user + 2} solo + find-a-person tasks.</p>
       </div>
 
@@ -386,6 +406,7 @@ function Tasks({ game, reload }) {
         <div className="flex flex-wrap gap-2 items-center">
           <TypeSelect value={draft.type} onChange={(type) => setDraft({ ...draft, type })} />
           {game.settings.alcohol_tasks && <Check checked={draft.is_alcoholic} onChange={(v) => setDraft({ ...draft, is_alcoholic: v })} label="alcohol" />}
+          <Check checked={draft.is_universal} onChange={(v) => setDraft({ ...draft, is_universal: v, type: 1 })} label="🃏 wildcard" />
           <button disabled={draft.description.trim().length < 3}
             onClick={() => run(host.addTask(game.id, draft)).then(() => setDraft({ ...draft, description: '' }))}
             className="btn-primary py-2 ml-auto">Add</button>
@@ -399,17 +420,20 @@ function Tasks({ game, reload }) {
           <div key={t.id} className="card p-3 space-y-2">
             <textarea rows={2} value={editing.description} onChange={(e) => setEditing({ ...editing, description: e.target.value })} className="field" />
             <div className="flex gap-2 items-center">
-              <TypeSelect value={editing.type} onChange={(type) => setEditing({ ...editing, type })} disabled={game.started} />
+              <TypeSelect value={editing.type} onChange={(type) => setEditing({ ...editing, type })} disabled={game.started || editing.is_universal} />
+              <Check checked={editing.is_universal} onChange={(v) => setEditing({ ...editing, is_universal: v, type: 1 })} label="🃏 wildcard" />
               <button onClick={() => run(host.editTask(game.id, t.id, editing)).then(() => setEditing(null))} className="btn-primary py-2 ml-auto">Save</button>
               <button onClick={() => setEditing(null)} className="btn-ghost py-2">Cancel</button>
             </div>
           </div>
         ) : (
           <div key={t.id} className="card p-3 flex items-start gap-3">
-            <span className={`shrink-0 ${TYPE_COLOR[t.type]} text-ink text-[10px] font-bold px-2 py-1 rounded-md`}>{TYPE_LABEL[t.type]}</span>
+            {t.is_universal
+              ? <span className="shrink-0 bg-cream text-ink text-[10px] font-bold px-2 py-1 rounded-md">🃏 WILD</span>
+              : <span className={`shrink-0 ${TYPE_COLOR[t.type]} text-ink text-[10px] font-bold px-2 py-1 rounded-md`}>{TYPE_LABEL[t.type]}</span>}
             <p className="flex-1 text-sm">{t.description}{t.is_alcoholic && ' 🍺'}</p>
             {t.assigned_count > 0 && <span className="text-cream/40 text-xs shrink-0">×{t.assigned_count}</span>}
-            <button onClick={() => setEditing({ description: t.description, type: t.type, is_alcoholic: t.is_alcoholic, id: t.id })} className="text-cream/50 shrink-0">✎</button>
+            <button onClick={() => setEditing({ description: t.description, type: t.type, is_alcoholic: t.is_alcoholic, is_universal: t.is_universal, id: t.id })} className="text-cream/50 shrink-0">✎</button>
             {t.assigned_count === 0 && (
               <button onClick={() => confirm('Delete this task?') && run(host.deleteTask(game.id, t.id))} className="text-punch shrink-0">🗑</button>
             )}
@@ -470,6 +494,7 @@ function Players({ game }) {
               {qs.map((q) => <th key={q.id} className="p-3">{q.text}</th>)}
               <th className="p-3">Tasks</th>
               <th className="p-3">Consent</th>
+              <th className="p-3"></th>
             </tr>
           </thead>
           <tbody>
@@ -479,12 +504,32 @@ function Players({ game }) {
                 {qs.map((q) => <td key={q.id} className="p-3">{String(p.answers?.[q.id] ?? '')}</td>)}
                 <td className="p-3 tabular-nums">{p.completed_count}/{p.total}</td>
                 <td className="p-3 text-xs text-cream/60">{p.consent_accepted_at ? new Date(p.consent_accepted_at + 'Z').toLocaleString() : '—'}</td>
+                <td className="p-3"><PlayerLink id={p.id} name={p.name} /></td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
     </div>
+  )
+}
+
+function PlayerLink({ id, name }) {
+  const [show, setShow] = useState(false)
+  const url = `${window.location.origin}/u/${id}`
+  return (
+    <>
+      <button onClick={() => setShow(true)} className="text-xs text-zest underline whitespace-nowrap">🔗 link</button>
+      {show && (
+        <Modal onClose={() => setShow(false)}>
+          <p className="font-display font-bold text-lg text-zest mb-1">{name}'s personal link</p>
+          <p className="text-cream/50 text-xs mb-4">Opens their game on a new phone. Only give it to {name}.</p>
+          <div className="bg-white p-2 rounded-xl w-fit mx-auto"><QRCode value={url} size={200} /></div>
+          <button onClick={() => navigator.clipboard?.writeText(url)} className="btn-ghost w-full mt-4 text-sm">📋 Copy link</button>
+          <button onClick={() => setShow(false)} className="btn-ghost w-full mt-2">Close</button>
+        </Modal>
+      )}
+    </>
   )
 }
 

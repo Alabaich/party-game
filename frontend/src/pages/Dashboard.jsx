@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { api, uploadAndComplete, freeUpload, store } from '../lib/api'
+import { api, uploadAndComplete, freeUpload, store, downloadUrl } from '../lib/api'
 import {
-  useTheme, fmtDuration, Center, Prizes, TYPE_LABEL, TYPE_COLOR, THEME_EMOJI,
+  useTheme, fmtDuration, Center, Prizes, Modal, TYPE_LABEL, TYPE_COLOR, THEME_EMOJI,
 } from '../lib/ui'
 
 export default function Dashboard() {
@@ -17,6 +17,9 @@ export default function Dashboard() {
   const fileRef = useRef(null)
   const freeFileRef = useRef(null)
   const pickTargetId = useRef(null)
+  const pickSubId = useRef(null)
+  const [wildFor, setWildFor] = useState(null)
+  const [myMedia, setMyMedia] = useState(null)
 
   const load = useCallback(async () => {
     try {
@@ -30,8 +33,8 @@ export default function Dashboard() {
         try {
           const lb = await api.leaderboard(d.game.code)
           const finishedList = lb.filter((i) => i.finished)
-          const myIndex = finishedList.findIndex((i) => i.user_id === uuid)
-          const me = lb.find((i) => i.user_id === uuid)
+          const myIndex = finishedList.findIndex((i) => i.user_id === d.user_key)
+          const me = lb.find((i) => i.user_id === d.user_key)
           if (me) {
             setWinInfo({
               place: myIndex + 1,
@@ -68,9 +71,15 @@ export default function Dashboard() {
   const done = data.assignments.filter((a) => a.status === 'completed').length
   const allDone = data.assignments.length > 0 && done === data.assignments.length
 
-  function triggerUpload(assignmentId) {
+  function triggerUpload(assignmentId, substituteId = null) {
     pickTargetId.current = assignmentId
+    pickSubId.current = substituteId
     fileRef.current?.click()
+  }
+
+  async function openMyMedia() {
+    setMyMedia([])
+    try { setMyMedia(await api.myMedia(uuid)) } catch (e2) { setErr(e2.message) }
   }
 
   async function onFiles(e) {
@@ -79,7 +88,7 @@ export default function Dashboard() {
     if (!files?.length || !aid) return
     setUploadingId(aid); setErr('')
     try {
-      await uploadAndComplete(uuid, aid, files)
+      await uploadAndComplete(uuid, aid, files, pickSubId.current)
       await load()
       setViewing(null)
     } catch (e2) {
@@ -157,10 +166,18 @@ export default function Dashboard() {
           {freeUploading ? '⏳ Uploading…' : '📸 Just Upload'}
         </button>
 
-        <Link to={`/g/${game.code}/gallery`}
-          className="bg-zest text-ink font-display font-bold text-lg px-8 py-4 rounded-2xl active:scale-95 transition-transform">
-          📸 See all photos
-        </Link>
+        {game.settings.gallery === 'public' ? (
+          <Link to={`/g/${game.code}/gallery`}
+            className="bg-zest text-ink font-display font-bold text-lg px-8 py-4 rounded-2xl active:scale-95 transition-transform">
+            📸 See all photos
+          </Link>
+        ) : (
+          <button onClick={openMyMedia}
+            className="bg-zest text-ink font-display font-bold text-lg px-8 py-4 rounded-2xl active:scale-95 transition-transform">
+            🖼 My photos
+          </button>
+        )}
+        {myMedia && <MyMediaModal items={myMedia} onClose={() => setMyMedia(null)} />}
       </div>
     )
   }
@@ -184,6 +201,7 @@ export default function Dashboard() {
             className="bg-cream/10 px-3 py-2 rounded-xl disabled:opacity-50">
             {freeUploading ? '⏳' : '📸 Just Upload'}
           </button>
+          <button onClick={openMyMedia} className="bg-cream/10 px-3 py-2 rounded-xl">🖼 Mine</button>
         </div>
       </header>
 
@@ -203,13 +221,13 @@ export default function Dashboard() {
             <p className="text-mint tracking-widest text-xs mb-3">PLAYERS ({data.players.length})</p>
             <div className="space-y-2">
               {data.players.map((p) => (
-                <div key={p.id}
+                <div key={p.key}
                   className={`rounded-xl px-4 py-3 border ${
-                    p.id === data.user.id
+                    p.key === data.user_key
                       ? 'bg-zest/15 border-zest/50 text-zest font-bold'
                       : 'bg-cream/5 border-cream/15'
                   }`}>
-                  {p.name}{p.id === data.user.id && ' (you)'}
+                  {p.name}{p.key === data.user_key && ' (you)'}
                 </div>
               ))}
             </div>
@@ -247,6 +265,15 @@ export default function Dashboard() {
                         </p>
                       )}
                       {a.is_alcoholic && <span className="text-punch text-xs">🍺 alcoholic</span>}
+                      {a.substitute_description && (
+                        <p className="text-mint text-xs mt-1">🃏 Did instead: {a.substitute_description}</p>
+                      )}
+                      {!isDone && data.wildcards.length > 0 && data.wildcards_left > 0 && (
+                        <button onClick={(e) => { e.stopPropagation(); setWildFor(a) }}
+                          className="text-cream/50 text-xs underline underline-offset-2 mt-2">
+                          🃏 Can't do this one?
+                        </button>
+                      )}
                     </div>
                     <div className="shrink-0 text-2xl">
                       {isUp ? '⏳' : isDone ? '✅' : '⬜'}
@@ -258,11 +285,36 @@ export default function Dashboard() {
             })}
           </div>
           {err && <p className="text-punch text-center text-sm mt-4">{err}</p>}
+          {data.wildcards.length > 0 && (
+            <p className="text-cream/50 text-xs text-center mt-4">🃏 Wildcards left: {data.wildcards_left}</p>
+          )}
           <p className="text-cream/40 text-xs text-center mt-6">
             Tap a task to upload a photo or video as proof. Paired tasks close for both of you.
           </p>
         </>
       )}
+
+      {wildFor && (
+        <Modal onClose={() => setWildFor(null)}>
+          <p className="font-display font-bold text-xl text-zest mb-1">🃏 Use a wildcard</p>
+          <p className="text-cream/60 text-sm mb-4">
+            Do one of these instead of: <span className="text-cream">{wildFor.description}</span>
+            <br />You have {data.wildcards_left} left.
+          </p>
+          <div className="space-y-2">
+            {data.wildcards.map((w) => (
+              <button key={w.id} onClick={() => { const id = wildFor.id; setWildFor(null); triggerUpload(id, w.id) }}
+                className="w-full text-left card px-4 py-3 hover:border-zest/50">
+                {w.description}
+                <span className="block text-zest text-xs mt-1">Tap to upload proof →</span>
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setWildFor(null)} className="btn-ghost w-full mt-4">Cancel</button>
+        </Modal>
+      )}
+
+      {myMedia && <MyMediaModal items={myMedia} onClose={() => setMyMedia(null)} />}
 
       {viewing && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 px-4"
@@ -289,5 +341,26 @@ export default function Dashboard() {
         </div>
       )}
     </div>
+  )
+}
+
+function MyMediaModal({ items, onClose }) {
+  return (
+    <Modal wide onClose={onClose}>
+      <p className="font-display font-bold text-xl text-zest mb-1">🖼 My photos & videos</p>
+      <p className="text-cream/50 text-xs mb-4">Only you can see this list. Tap ⬇ to save.</p>
+      {items.length === 0 && <p className="text-cream/50 text-sm">Nothing uploaded yet.</p>}
+      <div className="grid grid-cols-2 gap-2">
+        {items.map((s) => (
+          <div key={s.id} className="relative rounded-xl overflow-hidden bg-black aspect-square">
+            {s.media_type === 'video'
+              ? <video src={s.file_url} className="w-full h-full object-cover" controls playsInline preload="metadata" />
+              : <img src={s.file_url} className="w-full h-full object-cover" loading="lazy" />}
+            <a href={downloadUrl(s.file_url)} className="absolute top-2 right-2 bg-black/70 rounded-lg px-2 py-1 text-xs">⬇</a>
+          </div>
+        ))}
+      </div>
+      <button onClick={onClose} className="btn-ghost w-full mt-4">Close</button>
+    </Modal>
   )
 }

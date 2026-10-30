@@ -155,8 +155,10 @@ export default function Screen() {
 
   const load = useCallback(async () => {
     try {
-      const [lb, gs, sl] = await Promise.all([api.leaderboard(code), api.game(code), api.slideshow(code)])
-      setItems(lb); setGame(gs); setSlides(sl)
+      const [lb, gs] = await Promise.all([api.leaderboard(code), api.game(code)])
+      setItems(lb); setGame(gs)
+      // private galleries only load in the host's logged-in browser
+      setSlides(await api.slideshow(code).catch(() => []))
     } catch { /* ignore */ }
   }, [code])
 
@@ -204,7 +206,7 @@ export default function Screen() {
             <Rule emoji="📸" title="Upload proof">Every completed task needs photo or video evidence. Tap the task to upload.</Rule>
             <Rule emoji="⚡" title="Fastest wins">The timer starts when the game begins. Finish all {n} tasks as fast as possible.</Rule>
             <Rule emoji="🤝" title="Paired tasks">When one partner uploads proof — the task closes for both automatically.</Rule>
-            <Rule emoji="🙈" title="Want to skip a task?">Take a <span className="text-zest font-bold">unique group photo</span> with several people all looking at the camera and upload it as proof. Each skip needs its own new group photo — no reusing!</Rule>
+            <Rule emoji="🃏" title="Can't do a task?">Tap <span className="text-zest font-bold">Can't do this one?</span> under the task and complete a wildcard instead.</Rule>
             <Rule emoji="📱" title="Just want to share?">Use the <span className="text-zest font-bold">📸 Just Upload</span> button to post any photo or video to the big screen without completing a task.</Rule>
           </div>
         </div>

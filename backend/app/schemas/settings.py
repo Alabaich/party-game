@@ -8,7 +8,8 @@ Theme = Literal["party", "halloween", "diwali"]
 # choice:  pick one of `options` (e.g. building); shown to people looking for you
 #          unless `private`
 # yesno / text: just collected
-QuestionKind = Literal["alcohol", "choice", "yesno", "text"]
+# email: optional contact, always host-only
+QuestionKind = Literal["alcohol", "choice", "yesno", "text", "email"]
 
 
 class Question(BaseModel):
@@ -31,14 +32,14 @@ DEFAULT_CONSENT_BODY = """PHOTO, VIDEO AND MEDIA RELEASE
 By checking "I agree" and joining this game, you confirm the following.
 
 1. What we collect
-To run the game we collect the name you enter, the answers to the questions on the sign-up screen (for example your building and unit number), and the photos and videos you upload. We also record the time you gave this consent, your IP address and your browser type, as a record of your agreement.
+To run the game we collect the name you enter, the answers to the questions on the sign-up screen (for example your building and unit number), and the photos and videos you upload. If you choose to give your email address, it is used only to send you photos from the event. We also record the time you gave this consent, your IP address and your browser type, as a record of your agreement.
 
 2. How your photos and videos are used
 Photos and videos you upload, and photos or videos of you uploaded by other players, may be:
   a) shown on screens at this event and visible to other players during and after the game;
   b) published by the organizer on its social media accounts (for example Instagram, Facebook, LinkedIn, TikTok);
   c) used by the organizer in marketing, advertising and promotional materials, in print and online, including its websites, newsletters and leasing materials.
-Your first name may appear together with your photos. Your unit number is never published.
+Your first name may appear together with your photos. Your unit number and email are never published.
 
 3. No payment
 You grant the organizer a free, non-exclusive, worldwide, perpetual licence to use, copy, edit and publish this content for the purposes above. You will not receive any payment or royalty for this use.
@@ -79,11 +80,16 @@ class GameSettings(BaseModel):
     questions: list[Question] = []
     allow_late_join: bool = True
     alcohol_tasks: bool = False
+    # how many wildcard tasks a player may use instead of tasks they can't do
+    max_wildcards: int = Field(default=2, ge=0, le=20)
+    # public: anyone with the code sees the slideshow/gallery
+    # host_only: only the host's logged-in browser (TV); players see their own uploads
+    gallery: Literal["public", "host_only"] = "public"
     prizes: list[Prize] = []
 
 
 def default_settings(theme: Theme = "party") -> GameSettings:
-    return GameSettings(theme=theme)
+    return GameSettings(theme=theme, gallery="host_only")
 
 
 def load_settings(raw: dict | None) -> GameSettings:

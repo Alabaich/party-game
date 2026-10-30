@@ -18,8 +18,9 @@ export default function Slideshow() {
 
   const load = useCallback(async () => {
     try {
-      const [g, items] = await Promise.all([api.game(code), api.slideshow(code)])
+      const g = await api.game(code)
       setTheme(g.settings.theme)
+      const items = await api.slideshow(code)
       slidesRef.current = items
       setSlides(items)
     } catch { /* ignore */ }

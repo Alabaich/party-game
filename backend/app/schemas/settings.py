@@ -88,8 +88,14 @@ class GameSettings(BaseModel):
     prizes: list[Prize] = []
 
 
+EMAIL_QUESTION = Question(
+    id="email", kind="email", required=False, private=True,
+    text="Want your photos from tonight? Leave your email and we'll send them",
+)
+
+
 def default_settings(theme: Theme = "party") -> GameSettings:
-    return GameSettings(theme=theme, gallery="host_only")
+    return GameSettings(theme=theme, gallery="host_only", questions=[EMAIL_QUESTION])
 
 
 def load_settings(raw: dict | None) -> GameSettings:

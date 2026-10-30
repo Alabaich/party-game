@@ -184,7 +184,7 @@ function StorageStatus() {
 const QUESTION_PRESETS = [
   ['Building (dropdown)', { kind: 'choice', text: 'Your building', options: ['80 Bond', '100 Bond'], required: true }],
   ['Unit number', { kind: 'text', text: 'Unit number', numeric: true, private: true, required: true }],
-  ['Email for photos (optional)', { kind: 'email', text: 'Want your photos from tonight? Leave your email and we\'ll send them (optional)', private: true, required: false }],
+  ['Email for photos (optional)', { kind: 'email', text: 'Want your photos from tonight? Leave your email and we\'ll send them', private: true, required: false }],
   ['Yes / No', { kind: 'yesno', text: 'New question?', required: true }],
   ['Text', { kind: 'text', text: 'New question?', required: false }],
   ['Drinking alcohol?', { kind: 'alcohol', text: 'Will you be drinking alcohol tonight?', required: true }],
@@ -211,7 +211,12 @@ function Settings({ game, onSaved }) {
 
   function addQuestion(preset) {
     const id = slug(preset.text, s.questions.map((q) => q.id))
-    set({ questions: [...s.questions, { options: [], numeric: false, private: false, ...preset, id }] })
+    const q = { options: [], numeric: false, private: false, ...preset, id }
+    // keep the optional email question last
+    const at = preset.kind === 'email' ? -1 : s.questions.findIndex((x) => x.kind === 'email')
+    const qs = [...s.questions]
+    if (at === -1) qs.push(q); else qs.splice(at, 0, q)
+    set({ questions: qs })
   }
   function moveQ(i, d) {
     const qs = [...s.questions]; const j = i + d

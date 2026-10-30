@@ -4,24 +4,13 @@ from sqlalchemy.orm import Session
 from .deps import get_db
 from .. import schemas
 from ..models import (
-    User, Task, Assignment, Media, FreeMedia, AssignmentStatus, MediaType,
+    Game, User, Task, Assignment, Media, FreeMedia, AssignmentStatus, MediaType,
 )
 from ..config import settings
-from ..services.text import render_task
-from ..services.storage import make_presigned_put, upload_file_to_r2
+from ..services import views
+from ..services.storage import upload_file_to_r2
 
 router = APIRouter()
-
-
-@router.post("/u/{user_id}/assignments/{assignment_id}/presign",
-             response_model=schemas.PresignOut)
-def presign(user_id: str, assignment_id: int,
-            payload: schemas.PresignIn, db: Session = Depends(get_db)):
-    a = db.get(Assignment, assignment_id)
-    if not a or a.user_id != user_id:
-        raise HTTPException(404, "Assignment not found")
-    upload_url, public_url = make_presigned_put(payload.filename, payload.content_type)
-    return schemas.PresignOut(upload_url=upload_url, public_url=public_url)
 
 
 @router.post("/u/{user_id}/assignments/{assignment_id}/upload",
@@ -76,19 +65,7 @@ def complete_task(user_id: str, assignment_id: int,
     db.commit()
     db.refresh(a)
 
-    t = db.get(Task, a.task_id)
-    desc = t.description
-    target_name = None
-    if a.target_user_id:
-        tgt = db.get(User, a.target_user_id)
-        target_name = tgt.name if tgt else None
-    desc = render_task(desc, target_name)
-    return schemas.AssignmentOut(
-        id=a.id, task_id=a.task_id, description=desc, type=t.type,
-        is_alcoholic=t.is_alcoholic, target_user_name=target_name,
-        pair_id=a.pair_id, status=a.status, completed_at=a.completed_at,
-        media=[schemas.MediaOut.model_validate(m) for m in a.media],
-    )
+    return views.assignment_out(db, db.get(Game, db.get(User, user_id).game_id), a)
 
 
 async def _read_media(file: UploadFile) -> tuple[bytes, str]:

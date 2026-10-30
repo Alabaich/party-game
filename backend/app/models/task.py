@@ -9,7 +9,6 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    # nullable for now: seed tasks are global until per-game tasks land
     game_id = Column(UUID(as_uuid=False), ForeignKey("games.id"), nullable=True)
     description = Column(Text, nullable=False)
     type = Column(Enum(TaskType), nullable=False)

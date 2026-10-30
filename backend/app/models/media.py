@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, String, Integer, DateTime, ForeignKey, Enum, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from ..database import Base
@@ -14,6 +14,7 @@ class Media(Base):
     file_url = Column(String, nullable=False)
     media_type = Column(Enum(MediaType), nullable=False)
     uploaded_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    hidden = Column(Boolean, nullable=False, default=False)  # moderated out
 
     assignment = relationship("Assignment", back_populates="media")
 
@@ -27,5 +28,6 @@ class FreeMedia(Base):
     file_url = Column(String, nullable=False)
     media_type = Column(Enum(MediaType), nullable=False)
     uploaded_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    hidden = Column(Boolean, nullable=False, default=False)  # moderated out
 
     user = relationship("User", back_populates="free_media")

@@ -12,6 +12,7 @@ from .user import User
 from .task import Task
 from .assignment import Assignment
 from .media import Media, FreeMedia
+from .consent import ConsentDocument
 
 __all__ = [
     "TaskType",
@@ -25,4 +26,5 @@ __all__ = [
     "Assignment",
     "Media",
     "FreeMedia",
+    "ConsentDocument",
 ]

@@ -1,37 +1,23 @@
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 
 
-class AccountCreateIn(BaseModel):
+class SignupIn(BaseModel):
     email: EmailStr
-    display_name: str | None = None
-    password: str | None = None  # stub until auth lands
+    password: str = Field(min_length=8, max_length=200)
+    display_name: str | None = Field(default=None, max_length=80)
+    invite_code: str = ""
+
+
+class LoginIn(BaseModel):
+    email: EmailStr
+    password: str
 
 
 class AccountOut(BaseModel):
     id: str
     email: str
     display_name: str | None
-    is_active: bool
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class GameCreateIn(BaseModel):
-    name: str = "Party Quest"
-    tasks_per_user: int = 7
-
-
-class GameOut(BaseModel):
-    id: str
-    account_id: str | None
-    name: str
-    tasks_per_user: int
-    started_at: datetime | None
-    tasks_assigned: bool
-    places_revealed: bool
     created_at: datetime
 
     class Config:

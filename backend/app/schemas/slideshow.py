@@ -11,3 +11,5 @@ class SlideItem(BaseModel):
     media_type: MediaType
     completed_at: datetime
     is_free: bool
+    hidden: bool = False
+    media_id: int = 0

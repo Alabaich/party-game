@@ -32,7 +32,8 @@ services:
       R2_BUCKET: ${R2_BUCKET}
       R2_PUBLIC_BASE_URL: ${R2_PUBLIC_BASE_URL}
       CORS_ORIGINS: ${CORS_ORIGINS}
-      ADMIN_PIN: ${ADMIN_PIN:-}
+      SECRET_KEY: ${SECRET_KEY}
+      ADMIN_INVITE_CODE: ${ADMIN_INVITE_CODE:-}
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-300}
     ports:
       - "127.0.0.1:${BACKEND_PORT:-8090}:8000"   # Caddy на хості проксіює сюди

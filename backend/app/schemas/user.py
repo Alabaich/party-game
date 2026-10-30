@@ -1,9 +1,12 @@
-from pydantic import BaseModel
+from datetime import datetime
+from typing import Any
+from pydantic import BaseModel, Field
 
 
 class RegisterIn(BaseModel):
-    name: str
-    is_drinking: bool
+    name: str = Field(max_length=40)
+    answers: dict[str, Any] = {}
+    consent_sha256: str | None = None
 
 
 class UserOut(BaseModel):
@@ -22,3 +25,13 @@ class PlayerListItem(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+class PlayerAdminOut(BaseModel):
+    id: str
+    name: str
+    answers: dict[str, Any] | None
+    is_latecomer: bool
+    consent_accepted_at: datetime | None
+    completed_count: int
+    total: int

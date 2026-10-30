@@ -1,10 +1,10 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from .database import Base, engine, SessionLocal
+from .database import SessionLocal
 from .config import settings
-from .scripts.seed import seed_tasks_if_empty
 from .api import router
+from .services.migrations import upgrade_schema, adopt_legacy_data
 
 # import models package so all tables are registered on Base before create_all
 from . import models  # noqa: F401
@@ -12,10 +12,10 @@ from . import models  # noqa: F401
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    Base.metadata.create_all(bind=engine)
+    upgrade_schema()
     db = SessionLocal()
     try:
-        seed_tasks_if_empty(db)
+        adopt_legacy_data(db)
     finally:
         db.close()
     yield

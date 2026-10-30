@@ -1,20 +1,13 @@
-"""Schemas package — re-exports all schemas so existing access patterns like
-`schemas.UserOut`, `schemas.AssignmentOut` keep working after the split.
-"""
-from .user import RegisterIn, UserOut, PlayerListItem
+"""Schemas package — re-exports all schemas (`schemas.UserOut`, ...)."""
+from .user import RegisterIn, UserOut, PlayerListItem, PlayerAdminOut
 from .media import (
     MediaOut, PresignIn, PresignOut, UploadedFile, CompleteTaskIn,
 )
+from .game import (
+    LeaderboardItem, GamePublicOut, GameAdminOut, GameCreateIn, GameUpdateIn, PackOut,
+)
 from .assignment import AssignmentOut, DashboardOut
-from .game import LeaderboardItem, GameStatusOut
 from .slideshow import SlideItem
-from .account import AccountCreateIn, AccountOut, GameCreateIn, GameOut
-
-__all__ = [
-    "RegisterIn", "UserOut", "PlayerListItem",
-    "MediaOut", "PresignIn", "PresignOut", "UploadedFile", "CompleteTaskIn",
-    "AssignmentOut", "DashboardOut",
-    "LeaderboardItem", "GameStatusOut",
-    "SlideItem",
-    "AccountCreateIn", "AccountOut", "GameCreateIn", "GameOut",
-]
+from .account import SignupIn, LoginIn, AccountOut
+from .settings import GameSettings, Question, Prize
+from .task import TaskIn, TaskOut

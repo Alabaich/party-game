@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from ..models.enums import TaskType, AssignmentStatus
 from .user import UserOut, PlayerListItem
 from .media import MediaOut
+from .game import GamePublicOut
 
 
 class AssignmentOut(BaseModel):
@@ -12,6 +13,7 @@ class AssignmentOut(BaseModel):
     type: TaskType
     is_alcoholic: bool
     target_user_name: str | None
+    target_hint: str | None = None   # e.g. their building, to help find them
     pair_id: str | None
     status: AssignmentStatus
     completed_at: datetime | None
@@ -20,9 +22,6 @@ class AssignmentOut(BaseModel):
 
 class DashboardOut(BaseModel):
     user: UserOut
-    game_started: bool
-    started_at: datetime | None
-    server_time: datetime
+    game: GamePublicOut
     players: list[PlayerListItem]
     assignments: list[AssignmentOut]
-    places_revealed: bool

@@ -22,16 +22,17 @@ import uuid
 import random
 from sqlalchemy.orm import Session
 from ..models import (
-    User, Task, Assignment, GameState, TaskType, AssignmentStatus
+    User, Task, Assignment, Game, TaskType, AssignmentStatus
 )
-
-TASKS_PER_USER = 7
+from ..schemas.settings import load_settings
 
 
 # --------- helpers ---------
 
-def _pool(db: Session):
-    tasks = db.query(Task).all()
+def _pool(db: Session, game: Game):
+    tasks = db.query(Task).filter(Task.game_id == game.id).all()
+    if not load_settings(game.settings).alcohol_tasks:
+        tasks = [t for t in tasks if not t.is_alcoholic]
     by_type = {TaskType.SOLO: [], TaskType.TARGETED: [], TaskType.PAIRED: []}
     for t in tasks:
         by_type[t.type].append(t)
@@ -108,17 +109,19 @@ def _enforce_alcohol_limit(db: Session, user: User,
 
 # --------- масовий старт ---------
 
-def assign_tasks_for_all(db: Session):
-    by_type = _pool(db)
+def assign_tasks_for_all(db: Session, game: Game):
+    TASKS_PER_USER = game.tasks_per_user
+    by_type = _pool(db, game)
     all_tasks = by_type[TaskType.SOLO] + by_type[TaskType.TARGETED] + by_type[TaskType.PAIRED]
     usage = Usage(all_tasks)
 
-    users = db.query(User).filter(User.is_latecomer == False).all()  # noqa: E712
+    users = db.query(User).filter(User.game_id == game.id,
+                                  User.is_latecomer == False).all()  # noqa: E712
     users = [u for u in users if not u.assignments]
     if not users:
         return
 
-    all_users = db.query(User).all()
+    all_users = db.query(User).filter(User.game_id == game.id).all()
     bucket: dict[str, list[Assignment]] = {u.id: [] for u in users}
     partners: dict[str, set[str]] = {u.id: set() for u in users}
     user_by_id = {u.id: u for u in users}
@@ -251,10 +254,11 @@ def assign_tasks_for_all(db: Session):
 
 # --------- латекомер ---------
 
-def assign_tasks_for_latecomer(db: Session, user: User):
+def assign_tasks_for_latecomer(db: Session, game: Game, user: User):
     """Миттєве призначення тасок латекомеру. Тільки Type1/Type2, без дублів."""
-    by_type = _pool(db)
-    all_users = db.query(User).all()
+    TASKS_PER_USER = game.tasks_per_user
+    by_type = _pool(db, game)
+    all_users = db.query(User).filter(User.game_id == game.id).all()
     usage = Usage(by_type[TaskType.SOLO] + by_type[TaskType.TARGETED])
     fill_pool = by_type[TaskType.SOLO] + by_type[TaskType.TARGETED]
 

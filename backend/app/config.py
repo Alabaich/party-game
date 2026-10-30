@@ -9,8 +9,11 @@ class Settings(BaseSettings):
     R2_BUCKET: str
     R2_PUBLIC_BASE_URL: str
     CORS_ORIGINS: str = ""
-    # PIN for host actions (start game, reveal places, accounts). Empty = no check.
-    ADMIN_PIN: str = ""
+    # Signs admin session cookies. Empty = random per process (sessions reset on restart).
+    SECRET_KEY: str = ""
+    # Code required to register a host account. Empty = only the very first account may register.
+    ADMIN_INVITE_CODE: str = ""
+    COOKIE_SECURE: bool = True
     MAX_UPLOAD_MB: int = 300
 
     @property

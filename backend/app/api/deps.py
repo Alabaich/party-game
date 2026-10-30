@@ -1,14 +1,29 @@
 """Shared API dependencies."""
-import hmac
-from fastapi import Header, HTTPException
-from ..config import settings
+from fastapi import Depends, HTTPException, Request
+from sqlalchemy.orm import Session
 from ..database import get_db
+from ..models import Account, Game
+from ..services.auth import COOKIE_NAME, read_token
 
 
-def require_admin(x_admin_pin: str = Header(default="")):
-    """Host-only actions. If ADMIN_PIN is not configured, everything is allowed."""
-    if settings.ADMIN_PIN and not hmac.compare_digest(x_admin_pin, settings.ADMIN_PIN):
-        raise HTTPException(403, "Wrong admin PIN")
+def current_account(request: Request, db: Session = Depends(get_db)) -> Account:
+    token = request.cookies.get(COOKIE_NAME)
+    auth = request.headers.get("authorization", "")
+    if auth.lower().startswith("bearer "):
+        token = auth[7:]
+    account_id = read_token(token)
+    acc = db.get(Account, account_id) if account_id else None
+    if not acc or not acc.is_active:
+        raise HTTPException(401, "Please log in")
+    return acc
 
 
-__all__ = ["get_db", "require_admin"]
+def owned_game(game_id: str, acc: Account = Depends(current_account),
+               db: Session = Depends(get_db)) -> Game:
+    game = db.get(Game, game_id)
+    if not game or game.account_id != acc.id:
+        raise HTTPException(404, "Game not found")
+    return game
+
+
+__all__ = ["get_db", "current_account", "owned_game"]
